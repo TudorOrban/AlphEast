@@ -1,8 +1,20 @@
-from modules.data.database import Database
+import logging
+import sys
+
+from sqlalchemy import text
+from src.data.database import Database
 
 
-print("Hello World")
+logging.info("Starting database connection test...")
+try:
+    Database.initialize()
 
-db = Database()
+    with Database.get_db_session() as session:
+        result = session.execute(text("SELECT version();")).scalar()
+        logging.info(f"Successfully retrieved database version: {result}")
 
-conn = db.get_connection()
+    logging.info("Database connection test PASSED.")
+
+except Exception as e:
+    logging.error(f"Database connection test FAILED: {e}")
+    sys.exit(1) 

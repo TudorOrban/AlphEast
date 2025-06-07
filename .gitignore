@@ -12,9 +12,7 @@ venv/
 .mypy_cache/
 
 # Data
-*.sqlite
-data/*.csv
-data/*.parquet
+alembic.ini
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
