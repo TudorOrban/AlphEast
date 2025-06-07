@@ -4,15 +4,15 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import delete, func, insert, select
-from data.database import Database
-from data.eod_prices.model import EODPrice
+from src.data.database import Database
+from src.data.eod_prices.model import EODPrice
 
 
 class EODPriceRepository:
     def __init__(self):
         self.db_session_context= Database.get_db_session
 
-    def save(self, prices_data: List[Dict[str, Any]]) -> None:
+    def save_eod_prices(self, prices_data: List[Dict[str, Any]]) -> None:
         if not prices_data:
             logging.warning("No EOD prices provided to save.")
             return
@@ -39,11 +39,11 @@ class EODPriceRepository:
             if end_date:
                 stmt = stmt.where(EODPrice.time <= end_date)
 
-                stmt = stmt.order_by(EODPrice.time)
+            stmt = stmt.order_by(EODPrice.time)
 
-                result = session.execute(stmt).scalars().all()
-                logging.info(f"Retrieved {len(result)} EOD prices for symbol '{symbol}'.")
-                return result
+            result = session.execute(stmt).scalars().all()
+            logging.info(f"Retrieved {len(result)} EOD prices for symbol '{symbol}'.")
+            return result
             
     
     def get_latest_eod_price_date(self, symbol: str) -> Optional[datetime]:

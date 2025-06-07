@@ -2,7 +2,6 @@ import os
 import sys
 
 from logging.config import fileConfig
-from src.data.base_model import Base
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -11,6 +10,8 @@ from alembic import context
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
+from src.data.base_model import Base
+from src.data.eod_prices.model import EODPrice
 
 config = context.config
 

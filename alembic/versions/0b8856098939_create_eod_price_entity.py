@@ -1,8 +1,8 @@
-"""Create eod_prices table and enable hypertable
+"""Create eod_price entity
 
-Revision ID: 1b0e1ef46d5e
+Revision ID: 0b8856098939
 Revises: 
-Create Date: 2025-06-07 12:03:14.772255
+Create Date: 2025-06-07 15:18:54.370468
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '1b0e1ef46d5e'
+revision: str = '0b8856098939'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -32,8 +32,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('time', 'symbol')
     )
     # ### end Alembic commands ###
-
-    op.execute("SELECT create_hypertable('eod_prices', 'time', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE);")
 
 
 def downgrade() -> None:
