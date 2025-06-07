@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any, Dict, List
 
 
 class FinancialDataClient(ABC):
     @abstractmethod
-    def get_eod_prices(self, symbol: str, start_date: datetime, end_date: datetime):
+    def get_eod_prices(self, symbol: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """
         Fetches End-Of-Day (EOD) prices for a given symbol within a date range.
 

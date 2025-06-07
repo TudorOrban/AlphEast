@@ -1,36 +1,8 @@
 from datetime import datetime
-from decimal import Decimal
-import logging
-import sys
+from config import ALPHA_VANTAGE_API_KEY
+from src.data.eod_prices.service import FinancialDataService
+from src.data.sources.alpha_vantage_client import AlphaVantageClient
 
-from sqlalchemy import text
-from src.data.eod_prices.repository import EODPriceRepository
-from src.data.database import Database
+eod_price_service = FinancialDataService(ALPHA_VANTAGE_API_KEY)
 
-
-logging.info("Starting database connection test...")
-try:
-    Database.initialize()
-
-    with Database.get_db_session() as session:
-        result = session.execute(text("SELECT version();")).scalar()
-        logging.info(f"Successfully retrieved database version: {result}")
-
-    logging.info("Database connection test PASSED.")
-
-except Exception as e:
-    logging.error(f"Database connection test FAILED: {e}")
-    sys.exit(1) 
-
-repo = EODPriceRepository()
-
-# --- Test 2b: Get EOD Prices by Symbol ---
-logging.info("\n--- Test 2b: Getting EOD Prices for AAPL ---")
-try:
-    aapl_prices = repo.get_eod_prices_by_symbol("AAPL")
-    for price in aapl_prices:
-        logging.info(f"Retrieved: {price}")
-    assert len(aapl_prices) == 2, "Expected 2 AAPL prices"
-    logging.info("AAPL prices retrieval test PASSED.")
-except Exception as e:
-    logging.error(f"Error during get_eod_prices_by_symbol test (AAPL): {e}")
+eod_price_service.fetch_and_save_eod_prices("AAPL", start_date=datetime(2025, 1, 28, 23, 55, 59, 342380), end_date=datetime.now())

@@ -60,3 +60,6 @@ class Database:
         logging.warning("ATTENTION: Attempting to drop ALL tables. Data will be lost!")
         Base.metadata.drop_all(bind=cls._engine)
         logging.info("All tables dropped.")
+
+
+Database.initialize()

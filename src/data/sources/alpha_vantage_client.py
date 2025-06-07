@@ -3,7 +3,7 @@ from decimal import Decimal
 import logging
 import requests
 from typing import Any, Dict, List, Optional
-from data.sources.financial_data_client import FinancialDataClient
+from src.data.sources.financial_data_client import FinancialDataClient
 
 
 class AlphaVantageClient(FinancialDataClient):
@@ -15,13 +15,13 @@ class AlphaVantageClient(FinancialDataClient):
         self.api_key = api_key
         logging.info("AlphaVantage Client initialized")
 
-    def get_eod_prices(self, symbol, start_date, end_date):
+    def get_eod_prices(self, symbol, start_date, end_date) -> List[Dict[str, Any]]:
         logging.info(f"Fetching EOD prices for {symbol} from Alpha Vantage...")
         
         params = {
-            "function": "TIME_SERIES_DAILY_ADJUSTED",
+            "function": "TIME_SERIES_DAILY",
             "symbol": symbol,
-            "outputsize": "full"
+            "outputsize": "compact"
         }
         data = self._make_request(params)
 
@@ -30,12 +30,12 @@ class AlphaVantageClient(FinancialDataClient):
             return []
         
         eod_prices: List[Dict[str, Any]] = []
-        time_series = data["Times Series (Daily)"]
+        time_series = data["Time Series (Daily)"]
 
         for date_str, values in time_series.items():
             current_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
-            if start_date <= current_date <= end_date:
+            if start_date.date() <= current_date <= end_date.date():
                 try:
                     eod_prices.append({
                         "time": datetime.combine(current_date, datetime.min.time()),
@@ -44,7 +44,7 @@ class AlphaVantageClient(FinancialDataClient):
                         "high": Decimal(values["2. high"]),
                         "low": Decimal(values["3. low"]),
                         "close": Decimal(values["4. close"]),
-                        "volume": int(values["6. volume"])
+                        "volume": int(values["5. volume"])
                     })
                 except KeyError as ke:
                     logging.warning(f"Missing key in Alpha Vantage data for {symbol} on {date_str}: {ke}")
@@ -62,6 +62,7 @@ class AlphaVantageClient(FinancialDataClient):
             response = requests.get(self.BASE_URL, params)
             response.raise_for_status()
             data = response.json()
+            
             if "Error Message" in data:
                 logging.error(f"Alpha Vantage API Error: {data["Error Message"]}")
                 return None
