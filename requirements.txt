@@ -1,6 +1,9 @@
 SQLAlchemy
 alembic
 psycopg2-binary
+
+requests
+pandas
+
 pytest
 pytest-mock
-requests
