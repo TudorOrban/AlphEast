@@ -1,3 +1,6 @@
 SQLAlchemy
 alembic
 psycopg2-binary
+pytest
+pytest-mock
+requests

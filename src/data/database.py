@@ -34,6 +34,8 @@ class Database:
     @classmethod
     @contextlib.contextmanager
     def get_db_session(cls) -> Generator[Session, None, None]:
+        print("DATABASE: Inside REAL get_db_session") # Add this
+    
         if cls._SessionLocal is None:
             cls.initialize()
 
