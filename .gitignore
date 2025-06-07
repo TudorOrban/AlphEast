@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+.mypy_cache/
+
+# Data
+*.sqlite
+data/*.csv
+data/*.parquet
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# IDEs
+.idea/  # PyCharm
+.vscode/ # VS Code
+
+# OS generated files
+.DS_Store
+Thumbs.db
