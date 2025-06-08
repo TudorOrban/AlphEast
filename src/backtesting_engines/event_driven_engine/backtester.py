@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 import logging
 
+from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from src.shared.metrics import calculate_performance_metrics
 from src.shared.plotting import PerformancePlotter
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
@@ -49,10 +50,12 @@ class EventDrivenBacktester:
             slow_period=slow_period
         )
 
+        position_sizing_method = FixedAllocationSizing(0.5)
         self.portfolio_manager = PortfolioManager(
             event_queue=self.event_queue,
             initial_cash=self.initial_cash,
-            transaction_cost_percent=decimal_transaction_cost
+            transaction_cost_percent=decimal_transaction_cost,
+            position_sizing_method=position_sizing_method
         )
 
         self.execution_handler = SimulatedExecutionHandler(

@@ -2,6 +2,8 @@ from datetime import datetime
 from decimal import Decimal
 import logging
 from typing import Any, Dict, List, Optional
+from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
+from src.backtesting_engines.event_driven_engine.position_sizing.base_position_sizing import BasePositionSizing
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.models.event import FillEvent, MarketEvent, OrderEvent, SignalEvent
 from src.shared.portfolio import Portfolio
@@ -18,12 +20,14 @@ class PortfolioManager:
         self,
         event_queue: EventQueue,
         initial_cash: float = 100000.0,
-        transaction_cost_percent: Decimal = Decimal("0.001")
+        transaction_cost_percent: Decimal = Decimal("0.001"),
+        position_sizing_method: BasePositionSizing = None
     ):
         self.event_queue = event_queue
         self.portfolio_account = Portfolio(initial_cash, transaction_cost_percent)
         self._latest_market_prices: Dict[str, Decimal] = {}
         self._current_date: Optional[datetime.date] = None
+        self.position_sizing_method = position_sizing_method or FixedAllocationSizing(0.05)
         logging.info(f"PortfolioManager initialized. Initial cash: ${self.portfolio_account.cash:.2f}")
 
     def on_market_event(self, event: MarketEvent):
@@ -54,19 +58,31 @@ class PortfolioManager:
 
         if event.direction == Signal.BUY.value:
             if current_holding == Decimal("0"):
-                if self.portfolio_account.can_buy(current_price, target_quantity):
+                calculated_quantity = self.position_sizing_method.calculate_quantity(
+                    symbol=event.symbol,
+                    direction=event.direction,
+                    current_price=current_price,
+                    portfolio_cash=self.portfolio_account.cash,
+                    portfolio_holdings=self.portfolio_account.holdings,
+                )
+
+                if calculated_quantity <= Decimal("0"):
+                    logging.warning(f"Calculated quantity for {event.symbol} is {calculated_quantity}. Skipping BUY signal on {event.timestamp.date()}.")
+                    return
+
+                if self.portfolio_account.can_buy(current_price, calculated_quantity):
                     order_event = OrderEvent(
                         symbol=event.symbol,
                         timestamp=event.timestamp,
                         direction="BUY",
-                        quantity=target_quantity,
+                        quantity=calculated_quantity,
                         order_type="MARKET",
                         price=current_price
                     )
                     self.event_queue.put(order_event)
-                    logging.info(f"PortfolioManager placed BUY order for {target_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}")
+                    logging.info(f"PortfolioManager placed BUY order for {calculated_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}")
                 else:
-                    logging.warning(f"Not enough cash to BUY {target_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}. Current cash: ${self.portfolio_account.cash:.2f}")
+                    logging.warning(f"Not enough cash to BUY {calculated_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}. Current cash: ${self.portfolio_account.cash:.2f}")
             else:
                 logging.debug(f"Already holding {event.symbol}. Skipping BUY signal on {event.timestamp.date()}.")
 
