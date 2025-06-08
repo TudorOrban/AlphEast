@@ -6,7 +6,7 @@ from src.backtesting_engines.event_driven_engine.position_sizing.base_position_s
 
 class FixedAllocationSizing(BasePositionSizing):
     def __init__(self, allocation_percent: float):
-        self.allocation_percent = Decimal(str(allocation_percent)) # e.g., 0.10 for 10%
+        self.allocation_percent = Decimal(str(allocation_percent))
 
     def calculate_quantity(
         self,

@@ -52,22 +52,15 @@ class SimulatedExecutionHandler(ExecutionHandler):
             self.event_queue.put(failed_fill_event)
             return
     
-        # Process MARKET OrderEvent
+        self.process_market_order_event(event)
+
+    def process_market_order_event(self, event: OrderEvent):
         try:
             fill_price_data = self._latest_market_prices.get(event.symbol)
 
             if not fill_price_data:
                 logging.warning(f"No market data available for {event.symbol} to fill order on {event.timestamp.date()}. Skipping fill.")
-                failed_fill_event = FillEvent(
-                    symbol=event.symbol,
-                    timestamp=event.timestamp,
-                    direction=event.direction,
-                    quantity=event.quantity,
-                    fill_price=Decimal("0.0"),
-                    commission=Decimal("0.0"),
-                    successful=False
-                )
-                self.event_queue.put(failed_fill_event)
+                self.push_failed_fill_event(event)
                 return
 
             fill_price = fill_price_data["price"]
@@ -87,15 +80,16 @@ class SimulatedExecutionHandler(ExecutionHandler):
 
         except Exception as e:
             logging.error(f"Error simulating order fill for {event.symbol} on {event.timestamp.date()}: {e}", exc_info=True)
-            failed_fill_event = FillEvent(
-                symbol=event.symbol,
-                timestamp=event.timestamp,
-                direction=event.direction,
-                quantity=event.quantity,
-                fill_price=Decimal('0.0'),
-                commission=Decimal('0.0'),
-                successful=False
-            )
-            self.event_queue.put(failed_fill_event)
+            self.push_failed_fill_event(event)
 
-    
+    def push_failed_fill_event(self, event: OrderEvent):
+        failed_fill_event = FillEvent(
+            symbol=event.symbol,
+            timestamp=event.timestamp,
+            direction=event.direction,
+            quantity=event.quantity,
+            fill_price=Decimal("0.0"),
+            commission=Decimal("0.0"),
+            successful=False
+        )
+        self.event_queue.put(failed_fill_event)

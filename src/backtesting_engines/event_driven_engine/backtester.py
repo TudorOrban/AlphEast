@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 import logging
-from typing import List
+from typing import Any, Dict, List
 
 from src.backtesting_engines.event_driven_engine.strategy.base_strategy import NewBaseStrategy
 from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
@@ -86,34 +86,7 @@ class EventDrivenBacktester:
 
             # --- 2. Process all events currently in the queue ---
             while not self.event_queue.empty():
-                event = self.event_queue.get()
-
-                if event is None:
-                    break
-
-                logging.debug(f"Processing event: {event}")
-
-                if event.type == "MARKET":
-                    for strategy in self.strategies:
-                        strategy.on_market_event(event)
-                        
-                    self.portfolio_manager.on_market_event(event)
-                    self.execution_handler.on_market_event(event)
-
-                elif event.type == "SIGNAL":
-                    self.portfolio_manager.on_signal_event(event)
-
-                elif event.type == "ORDER":
-                    self.execution_handler.on_order_event(event)
-
-                elif event.type == "FILL":
-                    self.portfolio_manager.on_fill_event(event)
-
-                elif event.type == "DAILY_UPDATE":
-                    self.portfolio_manager.on_daily_update_event(event)
-
-                else:
-                    logging.warning(f"Unknown event type received: {event.type}")
+                self._process_next_event()
 
         # -- Post-Backtest Analysis ---
         daily_values = self.portfolio_manager.get_daily_values()
@@ -130,7 +103,64 @@ class EventDrivenBacktester:
             trade_log=trade_log,
             benchmark_daily_values=benchmark_daily_values
         )
+    
+        self._print_metrics(
+            final_portfolio_summary, 
+            trade_log, 
+            performance_metrics
+        )
 
+        plot_title = f"Event-Driven Portfolio Equity Curve: Multiple Symbols with SMA Crossover"
+        self.plotter.plot_equity_curve(
+            daily_values=daily_values,
+            benchmark_daily_values=benchmark_daily_values, 
+            title=plot_title
+        )
+
+        return {
+            "performance_metrics": performance_metrics,
+            "daily_values": daily_values,
+            "benchmark_daily_values": benchmark_daily_values,
+            "trade_log": trade_log,
+            "final_portfolio_summary": final_portfolio_summary
+        }
+
+    def _process_next_event(self):
+        event = self.event_queue.get()
+
+        if event is None:
+            return
+
+        logging.debug(f"Processing event: {event}")
+
+        if event.type == "MARKET":
+            for strategy in self.strategies:
+                strategy.on_market_event(event)
+                
+            self.portfolio_manager.on_market_event(event)
+            self.execution_handler.on_market_event(event)
+
+        elif event.type == "SIGNAL":
+            self.portfolio_manager.on_signal_event(event)
+
+        elif event.type == "ORDER":
+            self.execution_handler.on_order_event(event)
+
+        elif event.type == "FILL":
+            self.portfolio_manager.on_fill_event(event)
+
+        elif event.type == "DAILY_UPDATE":
+            self.portfolio_manager.on_daily_update_event(event)
+
+        else:
+            logging.warning(f"Unknown event type received: {event.type}")
+
+    def _print_metrics(
+        self,
+        final_portfolio_summary: Dict[str, Any],
+        trade_log: List[Dict[str, Any]],
+        performance_metrics: Dict[str, Any]
+    ):
         print("\n--- Event-Driven Backtest Summary ---")
         print(f"Initial Cash: ${self.initial_cash:.2f}")
         print(f"Final Cash: ${final_portfolio_summary["cash"]:.2f}")
@@ -157,17 +187,3 @@ class EventDrivenBacktester:
 
         print("-----------------------------------")
         
-        plot_title = f"Event-Driven Portfolio Equity Curve: Multiple Symbols with SMA Crossover"
-        self.plotter.plot_equity_curve(
-            daily_values=daily_values,
-            benchmark_daily_values=benchmark_daily_values, 
-            title=plot_title
-        )
-
-        return {
-            "performance_metrics": performance_metrics,
-            "daily_values": daily_values,
-            "benchmark_daily_values": benchmark_daily_values,
-            "trade_log": trade_log,
-            "final_portfolio_summary": final_portfolio_summary
-        }
