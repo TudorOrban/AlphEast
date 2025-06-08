@@ -2,9 +2,9 @@
 from typing import List
 
 import pandas as pd
-from data.eod_prices.model import EODPrice
-from strategy.base_strategy import BaseStrategy
-from strategy.models.signal import Signal
+from src.data.eod_prices.model import EODPrice
+from src.strategy.base_strategy import BaseStrategy
+from src.strategy.models.signal import Signal
 
 
 class BasicStrategy(BaseStrategy):
@@ -12,7 +12,6 @@ class BasicStrategy(BaseStrategy):
         super().__init__(symbol)
         self.fast_period = fast_period
         self.slow_period = slow_period
-        print("Strategy initialized")
 
     def initialize(self):
         pass

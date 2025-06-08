@@ -2,14 +2,14 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
-from data.eod_prices.model import EODPrice
-from strategy.models.signal import Signal
+from src.data.eod_prices.model import EODPrice
+from src.strategy.models.signal import Signal
 
 
 class BaseStrategy(ABC):
     """
     Abstract base class for trading strategies.
-    Users implement concrete strategies by inheriting from this class.
+    Users should define concrete strategies by inheriting from this class.
     """
     def __init__(self, symbol: str, **kwargs: Any):
         """

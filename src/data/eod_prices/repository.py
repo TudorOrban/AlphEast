@@ -1,5 +1,5 @@
 
-from datetime import datetime
+from datetime import date, datetime
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -29,8 +29,8 @@ class EODPriceRepository:
                 raise
 
     def get_eod_prices_by_symbol(
-            self, symbol: str, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None 
-    ):
+            self, symbol: str, start_date: Optional[date] = None, end_date: Optional[date] = None 
+    ) -> List[EODPrice]:
         with self.db_session_context() as session:
             stmt = select(EODPrice).where(EODPrice.symbol == symbol)
 

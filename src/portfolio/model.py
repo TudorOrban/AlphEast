@@ -24,7 +24,7 @@ class Portfolio:
         self.initial_cash: Decimal = Decimal(str(initial_cash))
         self.transaction_cost_percent: Decimal = transaction_cost_percent
 
-        self.daily_values: List[Dict[str, Any]]
+        self.daily_values: List[Dict[str, Any]] = []
         self.trade_log: List[Dict[str, Any]] = []
 
         logging.info(f"Portfolio initialized with cash: ${self.cash:.2f}")
@@ -68,7 +68,7 @@ class Portfolio:
             "timestamp": timestamp,
             "symbol": symbol,
             "type": "BUY",
-            "quantity": float(quantity), # Store as float for JSON/DB if needed
+            "quantity": float(quantity),
             "price": float(price),
             "fees": float(fees),
             "total_cost": float(total_cost),
