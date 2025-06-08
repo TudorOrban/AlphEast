@@ -1,4 +1,5 @@
 
+import logging
 import queue
 from typing import Optional
 
@@ -11,6 +12,7 @@ class EventQueue:
     """
     def __init__(self):
         self._queue = queue.Queue()
+        logging.info(f"EventQueue initialized.")
 
     def put(self, event: Event):
         self._queue.put(event)

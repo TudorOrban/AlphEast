@@ -35,9 +35,12 @@ class SMACrossoverStrategy(NewBaseStrategy):
             logging.debug(f"Not enough history for {self.symbol} on {event.timestamp.date()}. Need {self.slow_period}, have {len(self._closes_history)}.")
             return
         
-        fast_sma = sum(self._closes_history[-self.fast_period:]) / self.fast_period
-        slow_sma = sum(self._closes_history) / self.slow_period
-
+        fast_sma_sum_list = list(self._closes_history)[-self.fast_period:]
+        fast_sma = sum(fast_sma_sum_list, Decimal('0')) / self.fast_period
+        
+        slow_sma_sum_list = list(self._closes_history)
+        slow_sma = sum(slow_sma_sum_list, Decimal('0')) / self.slow_period
+        
         if fast_sma > slow_sma and not self._has_position:
             self._put_signal_event(event.timestamp, Signal.BUY, quantity=Decimal("10"))
             self._has_position = True

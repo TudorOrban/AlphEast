@@ -37,96 +37,76 @@ class Portfolio:
         total_cost_with_fees = trade_cost + self._calculate_cost(quantity, price)
         return self.cash >= total_cost_with_fees
     
-    def buy(self, symbol: str, quantity: Decimal, price: Decimal, timestamp: datetime) -> Optional[Dict[str, Any]]:
+    def buy(self, symbol: str, quantity: Decimal, price: Decimal, timestamp: datetime, commission: Decimal = Decimal('0.0')) -> Dict[str, Any]:
         """
-        Executes a buy order.
-
-        Args:
-            symbol: The stock symbol to buy.
-            quantity: Number of shares to buy.
-            price: Execution price per share.
-            timestamp: The datetime of the trade.
-
-        Returns:
-            A dictionary representing the trade, or None if the trade cannot be executed.
+        Executes a buy order, updates cash, holdings, and logs the trade.
+        Assumes the order is valid (e.g., sufficient cash checked externally by PortfolioManager).
+        Accepts commission directly from the fill event.
         """
         quantity = Decimal(str(quantity))
         price = Decimal(str(price))
+        commission = Decimal(str(commission))
 
-        trade_cost = quantity * price
-        fees = self._calculate_cost(quantity, price)
-        total_cost = trade_cost + fees
-
-        if not self.can_buy(price, quantity):
-            logging.warning(f"Insufficient cash to buy {quantity} of {symbol} at ${price:.2f}.")
-            return None
+        trade_cost_raw = quantity * price
+        total_cost = trade_cost_raw + commission
+        
+        if self.cash < total_cost:
+            logging.error(f"Attempted to buy {quantity} of {symbol} at {price:.2f} on {timestamp.date()} but insufficient cash! Cash: {self.cash:.2f}, Cost: {total_cost:.2f}")
+            raise ValueError("Insufficient cash to perform buy operation (should be caught by PM).")
 
         self.cash -= total_cost
         self.holdings[symbol] = self.holdings.get(symbol, Decimal("0")) + quantity
 
-        trade_record = {
+        trade_info = {
             "timestamp": timestamp,
             "symbol": symbol,
             "type": "BUY",
-            "quantity": float(quantity),
-            "price": float(price),
-            "fees": float(fees),
-            "total_cost": float(total_cost),
-            "cash_after": float(self.cash),
-            "holdings_after": {s: float(q) for s, q in self.holdings.items()} # Convert holdings to float for logging
+            "quantity": quantity,
+            "price": price,      
+            "commission": commission,
+            "total_cost": total_cost,
+            "cash_after_trade": self.cash
         }
-        self.trade_log.append(trade_record)
-        logging.debug(f"BUY {float(quantity):.2f} {symbol} @ ${float(price):.2f}. Cash: ${self.cash:.2f}")
-        return trade_record
+        self.trade_log.append(trade_info)
+        logging.info(f"BUY {quantity} {symbol} @ ${price:.2f} (Comm: ${commission:.2f}) on {timestamp.date()}. New Cash: ${self.cash:.2f}")
+        return trade_info
 
-    def sell(self, symbol: str, quantity: Decimal, price: Decimal, timestamp: datetime) -> Optional[Dict[str, Any]]:
+    def sell(self, symbol: str, quantity: Decimal, price: Decimal, timestamp: datetime, commission: Decimal = Decimal('0.0')) -> Dict[str, Any]:
         """
-        Executes a sell order.
-
-        Args:
-            symbol: The stock symbol to sell.
-            quantity: Number of shares to sell.
-            price: Execution price per share.
-            timestamp: The datetime of the trade.
-
-        Returns:
-            A dictionary representing the trade, or None if the trade cannot be executed.
+        Executes a sell order, updates cash, holdings, and logs the trade.
+        Assumes the order is valid (e.g., sufficient holdings checked externally by PortfolioManager).
+        Accepts commission directly from the fill event.
         """
         quantity = Decimal(str(quantity))
         price = Decimal(str(price))
+        commission = Decimal(str(commission))
 
-        current_holding = self.get_holding_quantity(symbol)
-        if current_holding < quantity:
-            logging.warning(f"Attempted to sell {quantity} of {symbol} but only {current_holding} held.")
-            quantity = current_holding
-            if quantity == Decimal('0'):
-                return None
+        if self.holdings.get(symbol, Decimal("0")) < quantity:
+            logging.error(f"Attempted to sell {quantity} of {symbol} on {timestamp.date()} but insufficient holdings! Holding: {self.holdings.get(symbol, Decimal('0'))}")
+            raise ValueError(f"Insufficient holdings of {symbol} to perform sell operation.")
 
-        trade_revenue = quantity * price
-        fees = self._calculate_cost(quantity, price)
-        net_revenue = trade_revenue - fees
+        trade_revenue_raw = price * quantity
+        total_revenue = trade_revenue_raw - commission
 
-        self.cash += net_revenue
+        self.cash += total_revenue
         self.holdings[symbol] -= quantity
-        
-        if self.holdings[symbol] <= Decimal('0'):
+        if self.holdings[symbol] == Decimal("0"):
             del self.holdings[symbol]
 
-        trade_record = {
+        trade_info = {
             "timestamp": timestamp,
             "symbol": symbol,
             "type": "SELL",
-            "quantity": float(quantity),
-            "price": float(price),
-            "fees": float(fees),
-            "net_revenue": float(net_revenue),
-            "cash_after": float(self.cash),
-            "holdings_after": {s: float(q) for s, q in self.holdings.items()}
+            "quantity": quantity,
+            "price": price,
+            "commission": commission,
+            "total_revenue": total_revenue,
+            "cash_after_trade": self.cash
         }
-        self.trade_log.append(trade_record)
-        logging.debug(f"SELL {float(quantity):.2f} {symbol} @ ${float(price):.2f}. Cash: ${self.cash:.2f}")
-        return trade_record
-
+        self.trade_log.append(trade_info)
+        logging.info(f"SELL {quantity} {symbol} @ ${price:.2f} (Comm: ${commission:.2f}) on {timestamp.date()}. New Cash: ${self.cash:.2f}")
+        return trade_info
+    
     def get_current_value(self, current_prices: Dict[str, Decimal]) -> Decimal:
         """
         Calculates the current total value of the portfolio(cash + value of holdings).
@@ -144,6 +124,27 @@ class Portfolio:
     
         return self.cash + holdings_value
     
+    def get_total_value(self, current_market_prices: Dict[str, Decimal]) -> Decimal:
+        """
+        Calculates the total current value of the portfolio (cash + value of holdings).
+
+        Args:
+            current_market_prices: A dictionary mapping symbol (str) to its latest price (Decimal).
+                                   This dict should contain prices for all symbols currently held.
+
+        Returns:
+            The total value of the portfolio as a Decimal.
+        """
+        total_holdings_value = Decimal("0")
+        for symbol, quantity in self.holdings.items():
+            if symbol in current_market_prices:
+                price = current_market_prices[symbol]
+                total_holdings_value += quantity * price
+            else:
+                logging.warning(f"Market price not available for held symbol '{symbol}' when calculating total value. Assuming 0 for this holding on this calculation.")
+        
+        return self.cash + total_holdings_value
+
     def record_daily_value(self, date: datetime.date, current_prices: Dict[str, Decimal]):
         """
         Records the portfolio's state and value at the end of a trading day.
@@ -162,8 +163,8 @@ class Portfolio:
         """
         return {
             "initial_cash": float(self.initial_cash),
-            "final_cash": float(self.cash),
-            "final_holdings": {s: float(q) for s, q in self.holdings.items()},
+            "cash": float(self.cash),
+            "holdings": {s: float(q) for s, q in self.holdings.items()},
             "total_trades": len(self.trade_log)
         }
 

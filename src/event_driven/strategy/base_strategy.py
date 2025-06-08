@@ -21,7 +21,7 @@ class NewBaseStrategy(ABC):
         self.event_queue = event_queue
         self.symbol: str = symbol
         self.params: Dict[str, Any] = kwargs
-        logging.info(f"self.__class__.__name__ initialized for {symbol} with params: {kwargs}")
+        logging.info(f"{self.__class__.__name__} initialized for {symbol} with params: {kwargs}")
 
     @abstractmethod
     def on_market_event(self, event: MarketEvent):

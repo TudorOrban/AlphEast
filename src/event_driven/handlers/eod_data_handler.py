@@ -2,9 +2,9 @@
 from datetime import date
 import logging
 from typing import List
-from data.eod_prices.model import EODPrice
-from data.eod_prices.repository import EODPriceRepository
-from event_driven.models.event import MarketEvent
+from src.data.eod_prices.model import EODPrice
+from src.data.eod_prices.repository import EODPriceRepository
+from src.event_driven.models.event import MarketEvent
 from src.event_driven.event_queue import EventQueue
 from src.event_driven.handlers.data_handler import DataHandler
 
@@ -66,5 +66,3 @@ class EODDatabaseDataHandler(DataHandler):
 
         if not self._all_eod_prices:
             logging.warning(f"No EOD prices found for {self.symbol} in range {self.start_date} - {self.end_date}. Backtest might not run.")
-        else:
-            logging.info(f"Loaded {len(self._all_eod_prices)} EOD prices for {self.symbol}.")

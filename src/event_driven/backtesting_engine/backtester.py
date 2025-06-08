@@ -1,0 +1,133 @@
+from datetime import date
+from decimal import Decimal
+import logging
+
+from src.analysis.metrics import calculate_performance_metrics
+from src.analysis.plotting import PerformancePlotter
+from src.event_driven.event_queue import EventQueue
+from src.event_driven.handlers.eod_data_handler import EODDatabaseDataHandler
+from src.event_driven.handlers.simulated_execution_handler import SimulatedExecutionHandler
+from src.event_driven.portfolio.portfolio_manager import PortfolioManager
+from src.event_driven.strategy.sma_crossover_strategy import SMACrossoverStrategy
+
+
+class NewBacktester:
+    """
+    Orchestrates the event-driven backtesting process.
+    Initializes all components and runs the main event loop.
+    """
+    def __init__(
+        self,
+        symbol: str,
+        start_date: date,
+        end_date: date,
+        initial_cash: float = 100000.0,
+        fast_period: int = 10,
+        slow_period: int = 50,
+        transaction_cost_percent: float = 0.001
+    ):
+        self.symbol = symbol
+        self.start_date = start_date
+        self.end_date = end_date
+        self.initial_cash = initial_cash
+
+        decimal_transaction_cost = Decimal(str(transaction_cost_percent))
+
+        self.event_queue = EventQueue()
+
+        self.data_handler = EODDatabaseDataHandler(
+            event_queue=self.event_queue,
+            symbol=self.symbol,
+            start_date=self.start_date,
+            end_date=self.end_date
+        )
+
+        self.strategy = SMACrossoverStrategy(
+            event_queue=self.event_queue,
+            symbol=self.symbol,
+            fast_period=fast_period,
+            slow_period=slow_period
+        )
+
+        self.portfolio_manager = PortfolioManager(
+            event_queue=self.event_queue,
+            initial_cash=self.initial_cash,
+            transaction_cost_percent=decimal_transaction_cost
+        )
+
+        self.execution_handler = SimulatedExecutionHandler(
+            event_queue=self.event_queue,
+            transaction_cost_percent=decimal_transaction_cost
+        )
+
+        self.plotter = PerformancePlotter()
+
+        logging.info("New Backtester initialized")
+
+    def run(self):
+        """
+        Runs the main event loop of the backtesting engine
+        """
+        logging.info(f"Starting Backtest for {self.symbol} from {self.start_date} to {self.end_date}")
+
+        while self.data_handler.continue_backtest() or not self.event_queue.empty():
+            # --- 1. Push next MarketEvents for the current "day" ---
+            if self.data_handler.continue_backtest():
+                self.data_handler.stream_next_market_event()
+
+            # --- 2. Process all events currently in the queue ---
+            while not self.event_queue.empty():
+                event = self.event_queue.get()
+
+                if event is None:
+                    break
+
+                logging.debug(f"Processing event: {event}")
+
+                if event.type == "MARKET":
+                    self.strategy.on_market_event(event)
+                    self.portfolio_manager.on_market_event(event)
+                    self.execution_handler.on_market_event(event)
+
+                elif event.type == "SIGNAL":
+                    self.portfolio_manager.on_signal_event(event)
+
+                elif event.type == "ORDER":
+                    self.execution_handler.on_order_event(event)
+
+                elif event.type == "FILL":
+                    self.portfolio_manager.on_fill_event(event)
+
+                else:
+                    logging.warning(f"Unknown event type received: {event.type}")
+
+        
+        # -- Post-backtest Analysis ---
+        daily_values = self.portfolio_manager.get_daily_values()
+        trade_log = self.portfolio_manager.get_trade_log()
+        final_portfolio_summary = self.portfolio_manager.get_summary()
+
+        performance_metrics = calculate_performance_metrics(
+            daily_values=daily_values,
+            trade_log=trade_log
+        )
+
+        print("\n--- Event-Driven Backtest Summary ---")
+        print(f"Initial Cash: ${self.initial_cash:.2f}")
+        print(f"Final Cash: ${final_portfolio_summary['cash']:.2f}")
+        print(f"Final Holdings: {final_portfolio_summary['holdings']}")
+        print(f"Total Trades: {len(trade_log)}")
+        print("\n--- Performance Metrics ---")
+        for metric, value in performance_metrics.items():
+            print(f"{metric.replace('_', ' ').title()}: {value}")
+        print("-----------------------------------")
+
+        plot_title = f"Event-Driven Portfolio Equity Curve: {self.symbol} with {self.strategy.__class__.__name__}"
+        self.plotter.plot_equity_curve(daily_values, title=plot_title)
+
+        return {
+            "performance_metrics": performance_metrics,
+            "daily_values": daily_values,
+            "trade_log": trade_log,
+            "final_portfolio_summary": final_portfolio_summary
+        }
