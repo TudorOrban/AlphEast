@@ -134,3 +134,15 @@ class FillEvent(Event):
             f"direction='{self.direction}', quantity={self.quantity}, fill_price={self.fill_price:.2f}, "
             f"commission={self.commission:.2f}, successful={self.successful})"
         )
+    
+class DailyUpdateEvent:
+    """
+    Represents an event signifying the end of a trading day, 
+    triggering daily portfolio value calculations and updates.
+    """
+    def __init__(self, timestamp: datetime):
+        self.type = "DAILY_UPDATE"
+        self.timestamp = timestamp
+
+    def __repr__(self):
+        return f"DailyUpdateEvent(timestamp={self.timestamp.date()})"

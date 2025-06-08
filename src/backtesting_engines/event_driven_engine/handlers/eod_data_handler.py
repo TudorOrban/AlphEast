@@ -1,12 +1,12 @@
 
-from datetime import date
+from datetime import date, datetime
 import logging
 from typing import List
 
 import pandas as pd
 from src.data.eod_prices.model import EODPrice
 from src.data.eod_prices.repository import EODPriceRepository
-from src.backtesting_engines.event_driven_engine.models.event import MarketEvent
+from src.backtesting_engines.event_driven_engine.models.event import DailyUpdateEvent, MarketEvent
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.data_handler import DataHandler
 
@@ -14,7 +14,7 @@ from src.backtesting_engines.event_driven_engine.handlers.data_handler import Da
 class EODDatabaseDataHandler(DataHandler):
     """
     A concrete data handler that fetches End-Of-Day (EOD) price data
-    from the database via EODPriceRepository
+    from the database via EODPriceRepository. Also pushes DailyUpdateEvents.
     """
     def __init__(self, event_queue: EventQueue, symbols: List[str], start_date: date, end_date: date):
         self.event_queue = event_queue
@@ -38,8 +38,10 @@ class EODDatabaseDataHandler(DataHandler):
             logging.debug("No more EOD data to stream.")
             return
         
-        current_date = self._unique_dates[self._current_date_idx]
-        daily_market_data = self._all_data_df[self._all_data_df["date"] == current_date]
+        current_date_obj = self._unique_dates[self._current_date_idx]
+        daily_market_data = self._all_data_df[self._all_data_df["date"] == current_date_obj]
+        
+        current_datetime = datetime.combine(current_date_obj, datetime.min.time())
 
         for _, row in daily_market_data.iterrows():
             market_data = {
@@ -57,7 +59,11 @@ class EODDatabaseDataHandler(DataHandler):
             )
             self.event_queue.put(market_event)
             logging.debug(f"Pushed MarketEvent for {row['symbol']} on {row['date']}")
-        
+
+        daily_update_event = DailyUpdateEvent(timestamp=current_datetime)
+        self.event_queue.put(daily_update_event)
+        logging.debug(f"Pushed DailyUpdateEvent for {current_date_obj}")
+
         self._current_date_idx += 1
 
     def continue_backtest(self) -> bool:

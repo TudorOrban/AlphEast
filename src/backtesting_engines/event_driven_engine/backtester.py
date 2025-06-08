@@ -109,6 +109,9 @@ class EventDrivenBacktester:
                 elif event.type == "FILL":
                     self.portfolio_manager.on_fill_event(event)
 
+                elif event.type == "DAILY_UPDATE":
+                    self.portfolio_manager.on_daily_update_event(event)
+
                 else:
                     logging.warning(f"Unknown event type received: {event.type}")
 
@@ -118,6 +121,10 @@ class EventDrivenBacktester:
         trade_log = self.portfolio_manager.get_trade_log()
         final_portfolio_summary = self.portfolio_manager.get_summary()
 
+        if not daily_values:
+            logging.error("No daily values recorded, skipping Summary.")
+            return
+
         performance_metrics = calculate_performance_metrics(
             daily_values=daily_values,
             trade_log=trade_log,
@@ -126,26 +133,41 @@ class EventDrivenBacktester:
 
         print("\n--- Event-Driven Backtest Summary ---")
         print(f"Initial Cash: ${self.initial_cash:.2f}")
-        print(f"Final Cash: ${final_portfolio_summary['cash']:.2f}")
-        print(f"Final Holdings: {final_portfolio_summary['holdings']}")
+        print(f"Final Cash: ${final_portfolio_summary["cash"]:.2f}")
+        print(f"Final Holdings: {final_portfolio_summary["holdings"]}")
         print(f"Total Trades: {len(trade_log)}")
-        print("\n--- Performance Metrics ---")
-        for metric, value in performance_metrics.items():
-            print(f"{metric.replace('_', ' ').title()}: {value}")
-        print("-----------------------------------")
-
-        if 'benchmark' in performance_metrics:
-            print("\n--- Performance Metrics (Benchmark) ---")
-            for metric, value in performance_metrics['benchmark'].items():
+        
+        # Print Strategy Performance
+        if "strategy" in performance_metrics and "error" not in performance_metrics["strategy"]:
+            print("\n--- Performance Metrics (Strategy) ---")
+            for metric, value in performance_metrics["strategy"].items():
                 print(f"{metric.replace('_', ' ').title()}: {value}")
-        print("-----------------------------------")
+        elif "strategy" in performance_metrics and "error" in performance_metrics["strategy"]:
+            print(f"\n--- Strategy Performance Error ---")
+            print(performance_metrics['strategy']['error'])
 
+        # Print Benchmark Performance
+        if "benchmark" in performance_metrics and "error" not in performance_metrics["benchmark"]:
+            print("\n--- Performance Metrics (Benchmark) ---")
+            for metric, value in performance_metrics["benchmark"].items():
+                print(f"{metric.replace('_', ' ').title()}: {value}")
+        elif "benchmark" in performance_metrics and "error" in performance_metrics["benchmark"]:
+            print(f"\n--- Benchmark Performance Error ---")
+            print(performance_metrics['benchmark']['error'])
+
+        print("-----------------------------------")
+        
         plot_title = f"Event-Driven Portfolio Equity Curve: Multiple Symbols with SMA Crossover"
-        self.plotter.plot_equity_curve(daily_values, title=plot_title)
+        self.plotter.plot_equity_curve(
+            daily_values=daily_values,
+            benchmark_daily_values=benchmark_daily_values, 
+            title=plot_title
+        )
 
         return {
             "performance_metrics": performance_metrics,
             "daily_values": daily_values,
+            "benchmark_daily_values": benchmark_daily_values,
             "trade_log": trade_log,
             "final_portfolio_summary": final_portfolio_summary
         }
