@@ -4,9 +4,9 @@ import logging
 from typing import List
 from src.data.eod_prices.model import EODPrice
 from src.data.eod_prices.repository import EODPriceRepository
-from src.event_driven.models.event import MarketEvent
-from src.event_driven.event_queue import EventQueue
-from src.event_driven.handlers.data_handler import DataHandler
+from src.backtesting_engines.event_driven_engine.models.event import MarketEvent
+from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
+from src.backtesting_engines.event_driven_engine.handlers.data_handler import DataHandler
 
 
 class EODDatabaseDataHandler(DataHandler):

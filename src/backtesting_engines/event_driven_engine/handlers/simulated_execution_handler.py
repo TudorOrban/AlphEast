@@ -2,9 +2,9 @@
 from decimal import Decimal
 import logging
 from typing import Dict
-from src.event_driven.event_queue import EventQueue
-from src.event_driven.models.event import FillEvent, MarketEvent, OrderEvent
-from src.event_driven.handlers.execution_handler import ExecutionHandler
+from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
+from src.backtesting_engines.event_driven_engine.models.event import FillEvent, MarketEvent, OrderEvent
+from src.backtesting_engines.event_driven_engine.handlers.execution_handler import ExecutionHandler
 
 
 class SimulatedExecutionHandler(ExecutionHandler):

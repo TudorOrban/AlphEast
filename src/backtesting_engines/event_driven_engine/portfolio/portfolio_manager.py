@@ -2,10 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 import logging
 from typing import Any, Dict, List, Optional
-from src.event_driven.event_queue import EventQueue
-from src.event_driven.models.event import FillEvent, MarketEvent, OrderEvent, SignalEvent
-from src.portfolio.model import Portfolio
-from src.strategy.models.signal import Signal
+from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
+from src.backtesting_engines.event_driven_engine.models.event import FillEvent, MarketEvent, OrderEvent, SignalEvent
+from src.shared.portfolio import Portfolio
+from src.shared.signal import Signal
 
 
 class PortfolioManager:

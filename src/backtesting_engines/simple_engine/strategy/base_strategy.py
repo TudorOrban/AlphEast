@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 from src.data.eod_prices.model import EODPrice
-from src.strategy.models.signal import Signal
+from src.shared.signal import Signal
 
 
 class BaseStrategy(ABC):

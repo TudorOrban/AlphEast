@@ -2,16 +2,16 @@ from datetime import date
 from decimal import Decimal
 import logging
 
-from src.analysis.metrics import calculate_performance_metrics
-from src.analysis.plotting import PerformancePlotter
-from src.event_driven.event_queue import EventQueue
-from src.event_driven.handlers.eod_data_handler import EODDatabaseDataHandler
-from src.event_driven.handlers.simulated_execution_handler import SimulatedExecutionHandler
-from src.event_driven.portfolio.portfolio_manager import PortfolioManager
-from src.event_driven.strategy.sma_crossover_strategy import SMACrossoverStrategy
+from src.shared.metrics import calculate_performance_metrics
+from src.shared.plotting import PerformancePlotter
+from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
+from src.backtesting_engines.event_driven_engine.handlers.eod_data_handler import EODDatabaseDataHandler
+from src.backtesting_engines.event_driven_engine.handlers.simulated_execution_handler import SimulatedExecutionHandler
+from src.backtesting_engines.event_driven_engine.portfolio.portfolio_manager import PortfolioManager
+from src.backtesting_engines.event_driven_engine.strategy.examples.sma_crossover_strategy import SMACrossoverStrategy
 
 
-class NewBacktester:
+class EventDrivenBacktester:
     """
     Orchestrates the event-driven backtesting process.
     Initializes all components and runs the main event loop.

@@ -3,16 +3,16 @@ from datetime import datetime
 from decimal import Decimal
 import logging
 from typing import List
-from src.analysis.plotting import PerformancePlotter
-from src.analysis.metrics import calculate_performance_metrics
+from src.backtesting_engines.simple_engine.strategy.base_strategy import BaseStrategy
+from src.shared.plotting import PerformancePlotter
+from src.shared.metrics import calculate_performance_metrics
 from src.data.eod_prices.model import EODPrice
 from src.data.eod_prices.repository import EODPriceRepository
-from src.portfolio.model import Portfolio
-from src.strategy.base_strategy import BaseStrategy
-from src.strategy.models.signal import Signal
+from src.shared.portfolio import Portfolio
+from src.shared.signal import Signal
 
 
-class Backtester:
+class SimpleBacktester:
     def __init__(self, strategy: BaseStrategy, initial_cash: float = 100000.0):
         """
         Initializes the backtesting engine.

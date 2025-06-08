@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from src.event_driven.models.event import MarketEvent, OrderEvent
+from src.backtesting_engines.event_driven_engine.models.event import MarketEvent, OrderEvent
 
 
 class ExecutionHandler(ABC):

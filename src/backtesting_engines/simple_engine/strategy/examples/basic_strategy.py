@@ -2,9 +2,9 @@
 from typing import List
 
 import pandas as pd
+from src.backtesting_engines.simple_engine.strategy.base_strategy import BaseStrategy
 from src.data.eod_prices.model import EODPrice
-from src.strategy.base_strategy import BaseStrategy
-from src.strategy.models.signal import Signal
+from src.shared.signal import Signal
 
 
 class BasicStrategy(BaseStrategy):

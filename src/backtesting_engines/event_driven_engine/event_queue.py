@@ -3,7 +3,7 @@ import logging
 import queue
 from typing import Optional
 
-from src.event_driven.models.event import Event
+from src.backtesting_engines.event_driven_engine.models.event import Event
 
 
 class EventQueue:

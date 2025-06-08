@@ -3,10 +3,10 @@ from collections import deque
 from decimal import Decimal
 import logging
 from typing import Any
-from src.event_driven.models.event import MarketEvent
-from src.event_driven.event_queue import EventQueue
-from src.event_driven.strategy.base_strategy import NewBaseStrategy
-from src.strategy.models.signal import Signal
+from src.backtesting_engines.event_driven_engine.models.event import MarketEvent
+from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
+from src.backtesting_engines.event_driven_engine.strategy.base_strategy import NewBaseStrategy
+from src.shared.signal import Signal
 
 
 class SMACrossoverStrategy(NewBaseStrategy):
