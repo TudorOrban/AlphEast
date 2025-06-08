@@ -1,13 +1,12 @@
 
 from datetime import date, datetime
 import logging
-from typing import List
+from typing import Dict, List
 import pandas as pd
 from src.backtesting_engines.event_driven_engine.models.input_data import PriceBar
 from src.backtesting_engines.event_driven_engine.models.event import DailyUpdateEvent, MarketEvent
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.data_handler import DataHandler
-from src.data.price_bars.repository import PriceDataRepository
 from src.data.price_bars.interval import Interval
 
 
@@ -23,14 +22,15 @@ class DatabaseDataHandler(DataHandler):
         symbols: List[str], 
         start_date: date, 
         end_date: date,
-        interval: Interval
+        interval: Interval,
+        price_data: Dict[str, List[PriceBar]] # Symbol -> its price data
     ):
         self.event_queue = event_queue
         self.symbols = symbols
         self.start_date = start_date
         self.end_date = end_date
         self.interval = interval
-        self.repository = PriceDataRepository()
+        self.price_data = price_data
         
         self._all_data_df: pd.DataFrame = pd.DataFrame()
         self._unique_timestamps: List[datetime] = []
@@ -97,13 +97,8 @@ class DatabaseDataHandler(DataHandler):
         """
         all_rows_data = []
         for symbol in self.symbols:
-            logging.info(f"Fetching {self.interval.value} data for {symbol}...")
-            price_bars: List[PriceBar] = self.repository.get_price_data(
-                symbol=symbol,
-                start_date=self.start_date,
-                end_date=self.end_date,
-                interval=self.interval
-            )
+            price_bars = self.price_data[symbol]
+
             for pb in price_bars:
                 all_rows_data.append({
                     "timestamp": pb.timestamp,

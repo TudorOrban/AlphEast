@@ -9,6 +9,7 @@ from src.shared.plotting import PerformancePlotter
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.database_data_handler import DatabaseDataHandler
 from src.backtesting_engines.event_driven_engine.handlers.simulated_execution_handler import SimulatedExecutionHandler
+from src.backtesting_engines.event_driven_engine.models.input_data import PriceBar
 from src.backtesting_engines.event_driven_engine.portfolio.portfolio_manager import PortfolioManager
 from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from src.backtesting_engines.event_driven_engine.strategy.base_strategy import NewBaseStrategy
@@ -28,7 +29,8 @@ class EventDrivenBacktester:
         initial_cash: float = 100000.0,
         fast_period: int = 10,
         slow_period: int = 50,
-        transaction_cost_percent: float = 0.001
+        transaction_cost_percent: float = 0.001,
+        price_data: Dict[str, List[PriceBar]] = {}
     ):
         self.symbols = symbols
         self.start_date = start_date
@@ -45,7 +47,8 @@ class EventDrivenBacktester:
             symbols=self.symbols,
             start_date=self.start_date,
             end_date=self.end_date,
-            interval=self.interval
+            interval=self.interval,
+            price_data=price_data
         )
 
         self.strategies: List[NewBaseStrategy] = []
