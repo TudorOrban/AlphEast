@@ -5,7 +5,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import delete, func, insert, select
-from src.backtesting_engines.event_driven_engine.handlers.input_data import PriceBar
+from src.backtesting_engines.event_driven_engine.models.input_data import PriceBar
 from src.data.price_bars.interval import Interval
 from src.data.price_bars.model import PriceBarEntity
 from src.data.database import Database

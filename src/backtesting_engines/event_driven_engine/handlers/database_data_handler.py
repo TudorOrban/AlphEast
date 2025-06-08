@@ -3,7 +3,7 @@ from datetime import date, datetime
 import logging
 from typing import List
 import pandas as pd
-from src.backtesting_engines.event_driven_engine.handlers.input_data import PriceBar
+from src.backtesting_engines.event_driven_engine.models.input_data import PriceBar
 from src.backtesting_engines.event_driven_engine.models.event import DailyUpdateEvent, MarketEvent
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.data_handler import DataHandler

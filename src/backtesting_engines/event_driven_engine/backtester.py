@@ -7,7 +7,6 @@ from src.data.price_bars.interval import Interval
 from src.shared.metrics import calculate_performance_metrics
 from src.shared.plotting import PerformancePlotter
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
-from src.backtesting_engines.event_driven_engine.handlers.eod_data_handler import EODDatabaseDataHandler
 from src.backtesting_engines.event_driven_engine.handlers.database_data_handler import DatabaseDataHandler
 from src.backtesting_engines.event_driven_engine.handlers.simulated_execution_handler import SimulatedExecutionHandler
 from src.backtesting_engines.event_driven_engine.portfolio.portfolio_manager import PortfolioManager
