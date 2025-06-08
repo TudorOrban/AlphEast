@@ -3,6 +3,8 @@ from datetime import datetime
 from decimal import Decimal
 import logging
 from typing import List
+from src.analysis.plotting import PerformancePlotter
+from src.analysis.metrics import calculate_performance_metrics
 from src.data.eod_prices.model import EODPrice
 from src.data.eod_prices.repository import EODPriceRepository
 from src.portfolio.model import Portfolio
@@ -22,6 +24,7 @@ class Backtester:
         self.strategy = strategy
         self.portfolio = Portfolio(initial_cash=initial_cash)
         self.repository = EODPriceRepository()
+        self.plotter = PerformancePlotter()
 
         self.strategy.set_environment(self.portfolio, self)
 
@@ -91,7 +94,29 @@ class Backtester:
             self.portfolio.record_daily_value(current_date_dt.date(), current_prices_for_portfolio)
 
         logging.info("Backtest completed.")
-        print(f"Daily values: {self.portfolio.daily_values}")
+        
+        performance_metrics = calculate_performance_metrics(
+            daily_values=self.portfolio.daily_values,
+            trade_log=self.portfolio.trade_log
+        )
+        
         print("\n--- Backtest Summary ---")
-        print(self.portfolio.get_summary())
+        print(f"Initial Cash: ${self.portfolio.initial_cash:.2f}")
+        print(f"Final Cash: ${self.portfolio.cash:.2f}")
+        print(f"Final Holdings: {self.portfolio.holdings}")
+        print(f"Total Trades: {len(self.portfolio.trade_log)}")
+        print("\n--- Performance Metrics ---")
+        for metric, value in performance_metrics.items():
+            print(f"{metric.replace('_', ' ').title()}: {value}")
         print("------------------------")
+
+        strategy_name = self.strategy.__class__.__name__
+        plot_title = f"Portflio Equity Curve: {symbol} with {strategy_name}"
+        self.plotter.plot_equity_curve(self.portfolio.daily_values, title=plot_title)
+
+        return {
+            "performance_metrics": performance_metrics,
+            "daily_values": self.portfolio.daily_values,
+            "trade_log": self.portfolio.trade_log,
+            "final_portfolio_summary": self.portfolio.get_summary()
+        }

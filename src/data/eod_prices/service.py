@@ -1,6 +1,5 @@
 from datetime import datetime
 import logging
-from data.eod_prices.json_mapper import EODPriceJsonMapper
 from src.data.eod_prices.repository import EODPriceRepository
 from src.data.sources.alpha_vantage_client import AlphaVantageClient
 

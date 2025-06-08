@@ -21,14 +21,14 @@ class AlphaVantageClient(FinancialDataClient):
         params = {
             "function": "TIME_SERIES_DAILY",
             "symbol": symbol,
-            "outputsize": "compact"
+            "outputsize": "full"
         }
         data = self._make_request(params)
 
         if not data or "Time Series (Daily)" not in data:
             logging.error(f"Couldd not retrieve daily time series data for {symbol}")
             return []
-        
+
         eod_prices: List[Dict[str, Any]] = []
         time_series = data["Time Series (Daily)"]
 
