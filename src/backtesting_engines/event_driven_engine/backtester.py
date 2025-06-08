@@ -60,7 +60,8 @@ class EventDrivenBacktester:
             event_queue=self.event_queue,
             initial_cash=self.initial_cash,
             transaction_cost_percent=decimal_transaction_cost,
-            position_sizing_method=position_sizing_method
+            position_sizing_method=position_sizing_method,
+            symbols=self.symbols
         )
 
         self.execution_handler = SimulatedExecutionHandler(
@@ -111,14 +112,16 @@ class EventDrivenBacktester:
                 else:
                     logging.warning(f"Unknown event type received: {event.type}")
 
-        # -- Post-backtest Analysis ---
+        # -- Post-Backtest Analysis ---
         daily_values = self.portfolio_manager.get_daily_values()
+        benchmark_daily_values = self.portfolio_manager.get_benchmark_daily_values()
         trade_log = self.portfolio_manager.get_trade_log()
         final_portfolio_summary = self.portfolio_manager.get_summary()
 
         performance_metrics = calculate_performance_metrics(
             daily_values=daily_values,
-            trade_log=trade_log
+            trade_log=trade_log,
+            benchmark_daily_values=benchmark_daily_values
         )
 
         print("\n--- Event-Driven Backtest Summary ---")
@@ -129,6 +132,12 @@ class EventDrivenBacktester:
         print("\n--- Performance Metrics ---")
         for metric, value in performance_metrics.items():
             print(f"{metric.replace('_', ' ').title()}: {value}")
+        print("-----------------------------------")
+
+        if 'benchmark' in performance_metrics:
+            print("\n--- Performance Metrics (Benchmark) ---")
+            for metric, value in performance_metrics['benchmark'].items():
+                print(f"{metric.replace('_', ' ').title()}: {value}")
         print("-----------------------------------")
 
         plot_title = f"Event-Driven Portfolio Equity Curve: Multiple Symbols with SMA Crossover"

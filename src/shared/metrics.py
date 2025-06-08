@@ -1,5 +1,5 @@
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,8 @@ TRADING_DAYS_PER_YEAR = 252
 def calculate_performance_metrics(
     daily_values: List[Dict[str, Any]],
     trade_log: List[Dict[str, Any]],
-    risk_free_trade: float = 0.0
+    risk_free_trade: float = 0.0,
+    benchmark_daily_values: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Calculates a set of common backtesting performance metrics.

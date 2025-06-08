@@ -21,13 +21,24 @@ class PortfolioManager:
         event_queue: EventQueue,
         initial_cash: float = 100000.0,
         transaction_cost_percent: Decimal = Decimal("0.001"),
-        position_sizing_method: BasePositionSizing = None
+        position_sizing_method: BasePositionSizing = None,
+        symbols: List[str] = []
     ):
         self.event_queue = event_queue
         self.portfolio_account = Portfolio(initial_cash, transaction_cost_percent)
         self._latest_market_prices: Dict[str, Decimal] = {}
         self._current_date: Optional[datetime.date] = None
+        
+        self._daily_values: List[Dict[str, Any]] = []
+        self._trade_log: List[Dict[str, Any]] = []
+        
         self.position_sizing_method = position_sizing_method or FixedAllocationSizing(0.05)
+        
+        self.symbols = symbols
+        self._benchmark_holdings: Dict[str, Decimal] = {}
+        self._benchmark_daily_values: List[Dict[str, Any]] = []
+        self._benchmark_initial_cash_per_symbol: Optional[Decimal] = None
+
         logging.info(f"PortfolioManager initialized. Initial cash: ${self.portfolio_account.cash:.2f}")
 
     def on_market_event(self, event: MarketEvent):
@@ -39,8 +50,33 @@ class PortfolioManager:
 
         if self._current_date is None or event.timestamp.date() > self._current_date:
             self._current_date = event.timestamp.date()
-            self.portfolio_account.record_daily_value(self._current_date, self._latest_market_prices)
-            logging.debug(f"Portfolio value recorded for {self._current_date}. Current value: ${self.portfolio_account.get_total_value(self._latest_market_prices):.2f}")
+            
+            # --- Initialize Benchmark on the first actual trading day ---
+            if not self._benchmark_holdings:
+                self._initialize_benchmark_holdings(
+                    self.portfolio_account.initial_cash,
+                    self._latest_market_prices
+                )
+
+            # --- Calculate and record strategy portfolio value ---
+            current_portfolio_value = self.portfolio_account.get_total_value(self._latest_market_prices)
+            self._daily_values.append({
+                "date": self._current_date,
+                "value": current_portfolio_value
+            })
+            logging.debug(f"Strategy portfolio value on {self._current_date}: ${current_portfolio_value:.2f}")
+
+            # --- Calculate and record benchmark portfolio value ---
+            benchmark_value = Decimal("0")
+            for symbol, quantity in self._benchmark_holdings.items():
+                if symbol in self._latest_market_prices:
+                    benchmark_value += quantity * self._latest_market_prices[symbol]
+             
+            self._benchmark_daily_values.append({
+                "date": self._current_date,
+                "value": benchmark_value
+            })
+            logging.debug(f"Benchmark portfolio value on {self._current_date}: ${benchmark_value:.2f}")
 
     def on_signal_event(self, event: SignalEvent):
         """
@@ -62,6 +98,8 @@ class PortfolioManager:
                     current_price=current_price,
                     portfolio_cash=self.portfolio_account.cash,
                     portfolio_holdings=self.portfolio_account.holdings,
+                    portfolio_current_value=self.portfolio_account.get_total_value(self._latest_market_prices), # Pass current total value
+                    latest_market_prices=self._latest_market_prices 
                 )
 
                 if calculated_quantity <= Decimal("0"):
@@ -131,8 +169,36 @@ class PortfolioManager:
     def get_daily_values(self) -> List[Dict[str, Any]]:
         return self.portfolio_account.daily_values
 
+    def get_benchmark_daily_values(self) -> List[Dict[str, Any]]:
+        """Returns the benchmark's daily portfolio value history."""
+        return self._benchmark_daily_values
+
     def get_trade_log(self) -> List[Dict[str, Any]]:
         return self.portfolio_account.trade_log
 
     def get_summary(self) -> Dict[str, Any]:
         return self.portfolio_account.get_summary()
+
+    def _initialize_benchmark_holdings(self, initial_cash_total: Decimal, current_market_prices: Dict[str, Decimal]):
+        """
+        Initializes the benchmark holdings by equally weighting the initial cash
+        across all symbols. This is called once at the first market event.
+        """
+        if not self.symbols:
+            logging.warning("No symbols provided to PortfolioManager")
+            return
+        
+        if len(self._benchmark_holdings) > 0:
+            return
+        
+        cash_per_symbol = initial_cash_total / Decimal(str(len(self.symbols)))
+        self._benchmark_initial_cash_per_symbol = cash_per_symbol
+
+        for symbol in self.symbols:
+            if symbol in current_market_prices and current_market_prices[symbol] > Decimal("0"):
+                quantity = (cash_per_symbol / current_market_prices[symbol]).quantize(Decimal("1"))
+                self._benchmark_holdings[symbol] = quantity
+                logging.info(f"Benchmark initialized: Bought {quantity} of {symbol} at {current_market_prices[symbol]:.2f}")
+            else:
+                self._benchmark_holdings[symbol] = Decimal("0")
+                logging.warning(f"Could not initialize benchmark holding for {symbol} due to missing or zero price.")
