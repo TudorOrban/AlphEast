@@ -2,8 +2,8 @@
 from decimal import Decimal
 import logging
 from typing import Dict
-from event_driven.event_queue import EventQueue
-from event_driven.models.event import FillEvent, MarketEvent, OrderEvent
+from src.event_driven.event_queue import EventQueue
+from src.event_driven.models.event import FillEvent, MarketEvent, OrderEvent
 from src.event_driven.handlers.execution_handler import ExecutionHandler
 
 
