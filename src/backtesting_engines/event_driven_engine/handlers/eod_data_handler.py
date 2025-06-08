@@ -16,7 +16,13 @@ class EODDatabaseDataHandler(DataHandler):
     A concrete data handler that fetches End-Of-Day (EOD) price data
     from the database via EODPriceRepository. Also pushes DailyUpdateEvents.
     """
-    def __init__(self, event_queue: EventQueue, symbols: List[str], start_date: date, end_date: date):
+    def __init__(
+        self, 
+        event_queue: EventQueue, 
+        symbols: List[str], 
+        start_date: date, 
+        end_date: date
+    ):
         self.event_queue = event_queue
         self.symbols = symbols
         self.start_date = start_date

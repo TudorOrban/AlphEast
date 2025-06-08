@@ -3,16 +3,17 @@ from decimal import Decimal
 import logging
 from typing import Any, Dict, List
 
-from src.backtesting_engines.event_driven_engine.strategy.base_strategy import NewBaseStrategy
-from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
+from src.data.interval import Interval
 from src.shared.metrics import calculate_performance_metrics
 from src.shared.plotting import PerformancePlotter
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.eod_data_handler import EODDatabaseDataHandler
+from src.backtesting_engines.event_driven_engine.handlers.database_data_handler import DatabaseDataHandler
 from src.backtesting_engines.event_driven_engine.handlers.simulated_execution_handler import SimulatedExecutionHandler
 from src.backtesting_engines.event_driven_engine.portfolio.portfolio_manager import PortfolioManager
+from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
+from src.backtesting_engines.event_driven_engine.strategy.base_strategy import NewBaseStrategy
 from src.backtesting_engines.event_driven_engine.strategy.examples.sma_crossover_strategy import SMACrossoverStrategy
-
 
 class EventDrivenBacktester:
     """
@@ -24,6 +25,7 @@ class EventDrivenBacktester:
         symbols: List[str],
         start_date: date,
         end_date: date,
+        interval: Interval = Interval.DAILY,
         initial_cash: float = 100000.0,
         fast_period: int = 10,
         slow_period: int = 50,
@@ -32,17 +34,19 @@ class EventDrivenBacktester:
         self.symbols = symbols
         self.start_date = start_date
         self.end_date = end_date
+        self.interval = interval
         self.initial_cash = initial_cash
 
         decimal_transaction_cost = Decimal(str(transaction_cost_percent))
 
         self.event_queue = EventQueue()
 
-        self.data_handler = EODDatabaseDataHandler(
+        self.data_handler = DatabaseDataHandler(
             event_queue=self.event_queue,
             symbols=self.symbols,
             start_date=self.start_date,
-            end_date=self.end_date
+            end_date=self.end_date,
+            interval=self.interval
         )
 
         self.strategies: List[NewBaseStrategy] = []
@@ -80,7 +84,7 @@ class EventDrivenBacktester:
         logging.info(f"Starting Backtest for {self.symbols} from {self.start_date} to {self.end_date}")
 
         while self.data_handler.continue_backtest() or not self.event_queue.empty():
-            # --- 1. Push next MarketEvents for the current "day" ---
+            # --- 1. Push next MarketEvents for the current interval ---
             if self.data_handler.continue_backtest():
                 self.data_handler.stream_next_market_event()
 
@@ -103,7 +107,7 @@ class EventDrivenBacktester:
             trade_log=trade_log,
             benchmark_daily_values=benchmark_daily_values
         )
-    
+
         self._print_metrics(
             final_portfolio_summary, 
             trade_log, 
