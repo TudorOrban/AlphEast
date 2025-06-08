@@ -2,11 +2,11 @@ from datetime import datetime
 import logging
 from typing import List
 from config import ALPHA_VANTAGE_API_KEY
-from src.data.interval import Interval
+from src.data.price_bars.service import FinancialDataService
 from src.backtesting_engines.simple_engine.strategy.examples.basic_strategy import BasicStrategy
-from src.backtesting_engines.event_driven_engine.backtester import EventDrivenBacktester
-from src.data.eod_prices.service import FinancialDataService
 from src.backtesting_engines.simple_engine.backtester import SimpleBacktester
+from src.backtesting_engines.event_driven_engine.backtester import EventDrivenBacktester
+from src.data.price_bars.interval import Interval
 
 
 def run_old_backtest(symbol: str, start_date: datetime, end_date: datetime):
@@ -47,8 +47,9 @@ if __name__ == "__main__":
     SYMBOLS = ["AAPL", "MSFT"]
     START_DATE = datetime(2020, 1, 1)
     END_DATE = datetime(2025, 1, 1)
-    
-    # service = FinancialDataService(ALPHA_VANTAGE_API_KEY)
-    # service.fetch_and_save_eod_prices("AAPL", START_DATE, END_DATE)
+    INTERVAL = Interval.DAILY
 
-    run_new_backtest(SYMBOLS, START_DATE, END_DATE, Interval.DAILY)
+    # service = FinancialDataService(ALPHA_VANTAGE_API_KEY)
+    # service.fetch_and_save_price_data("MSFT", START_DATE, END_DATE, INTERVAL)
+
+    run_new_backtest(SYMBOLS, START_DATE, END_DATE, INTERVAL)

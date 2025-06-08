@@ -3,11 +3,22 @@ from decimal import Decimal
 import logging
 import requests
 from typing import Any, Dict, List, Optional
+from src.data.price_bars.interval import Interval
 from src.data.sources.financial_data_client import FinancialDataClient
 
 
 class AlphaVantageClient(FinancialDataClient):
     BASE_URL = "https://www.alphavantage.co/query"
+    
+    _FUNCTION_MAP = {
+        Interval.DAILY: "TIME_SERIES_DAILY",
+        Interval.HOURLY: "TIME_SERIES_INTRADAY",
+        Interval.MINUTE_30: "TIME_SERIES_INTRADAY",
+    }
+    _INTRADAY_INTERVAL_PARAM_MAP = {
+        Interval.HOURLY: "60min",
+        Interval.MINUTE_30: "30min",
+    }
 
     def __init__(self, api_key: str):
         if not api_key:
@@ -15,29 +26,47 @@ class AlphaVantageClient(FinancialDataClient):
         self.api_key = api_key
         logging.info("AlphaVantage Client initialized")
 
-    def get_eod_prices(self, symbol, start_date, end_date) -> List[Dict[str, Any]]:
+    def get_price_data(
+        self, 
+        symbol: str, 
+        start_date: datetime, 
+        end_date: datetime,
+        interval: Interval
+    ) -> List[Dict[str, Any]]:
         logging.info(f"Fetching EOD prices for {symbol} from Alpha Vantage...")
+        
+        function = self._FUNCTION_MAP.get(interval)
+        if not function:
+            logging.error(f"Unsupported interval for Alpha Vantage: {interval.value}")
+            return []
         
         params = {
             "function": "TIME_SERIES_DAILY",
             "symbol": symbol,
             "outputsize": "full"
         }
+
+        if interval in self._INTRADAY_INTERVAL_PARAM_MAP:
+            params["interval"] = self._INTRADAY_INTERVAL_PARAM_MAP[interval]
+            time_series_key = f"Time Series ({params['interval']})"
+        else:
+            time_series_key = "Time Series (Daily)"
+
         data = self._make_request(params)
 
-        if not data or "Time Series (Daily)" not in data:
-            logging.error(f"Couldd not retrieve daily time series data for {symbol}")
+        if not data or time_series_key not in data:
+            logging.error(f"Could not retrieve {interval.value} time series data for {symbol}. Raw data: {data}")
             return []
 
-        eod_prices: List[Dict[str, Any]] = []
-        time_series = data["Time Series (Daily)"]
+        price_bars_data: List[Dict[str, Any]] = []
+        time_series = data[time_series_key]
 
         for date_str, values in time_series.items():
-            current_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            current_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S") if " " in date_str else datetime.strptime(date_str, "%Y-%m-%d")
 
-            if start_date.date() <= current_date <= end_date.date():
+            if start_date <= current_date <= end_date:
                 try:
-                    eod_prices.append({
+                    price_bars_data.append({
                         "time": datetime.combine(current_date, datetime.min.time()),
                         "symbol": symbol,
                         "open": Decimal(values["1. open"]),
@@ -51,9 +80,9 @@ class AlphaVantageClient(FinancialDataClient):
                 except ValueError as ve:
                     logging.warning(f"Value conversion error for {symbol} on {date_str}: {ve}")
 
-        eod_prices.sort(key=lambda x: x["time"])
-        logging.info(f"Retrieved {len(eod_prices)} EOD prices for {symbol} within specified data range.")
-        return eod_prices
+        price_bars_data.sort(key=lambda x: x["time"])
+        logging.info(f"Retrieved {len(price_bars_data)} EOD prices for {symbol} within specified data range.")
+        return price_bars_data
 
     def _make_request(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         params["apikey"] = self.api_key
@@ -71,4 +100,12 @@ class AlphaVantageClient(FinancialDataClient):
             return data
         except requests.exceptions.HTTPError as http_error:
             logging.error(f"HTTP error occurred: {http_error}")
+        except requests.exceptions.ConnectionError as conn_error:
+            logging.error(f"Connection error occurred while fetching from Alpha Vantage: {conn_error}. Request params: {params}")
+        except requests.exceptions.Timeout as timeout_error:
+            logging.error(f"Timeout occurred while fetching from Alpha Vantage: {timeout_error}. Request params: {params}")
+        except ValueError:
+            logging.error(f"Could not decode JSON response from Alpha Vantage. Response: {response.text}. Request params: {params}")
+        except Exception as e:
+            logging.error(f"An unexpected error occurred during Alpha Vantage request: {e}. Request params: {params}")
         return None

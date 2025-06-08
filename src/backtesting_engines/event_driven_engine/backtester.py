@@ -3,7 +3,7 @@ from decimal import Decimal
 import logging
 from typing import Any, Dict, List
 
-from src.data.interval import Interval
+from src.data.price_bars.interval import Interval
 from src.shared.metrics import calculate_performance_metrics
 from src.shared.plotting import PerformancePlotter
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue

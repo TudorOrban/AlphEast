@@ -2,23 +2,20 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List
 
+from src.data.price_bars.interval import Interval
+
 
 class FinancialDataClient(ABC):
     @abstractmethod
-    def get_eod_prices(self, symbol: str, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+    def get_price_data(
+        self, 
+        symbol: str, 
+        start_date: datetime, 
+        end_date: datetime, 
+        interval: Interval
+    ) -> List[Dict[str, Any]]:
         """
-        Fetches End-Of-Day (EOD) prices for a given symbol within a date range.
-
-        Args:
-            symbol (str): The stock symbol (e.g., "AAPL").
-            start_date (date): The start date for the data (inclusive).
-            end_date (date): The end date for the data (inclusive).
-
-        Returns:
-            List[Dict[str, Any]]: A list of dictionaries, where each dictionary
-                                   represents an EOD price record. The keys should
-                                   ideally match the EODPrice model's column names
-                                   (time, symbol, open, high, low, close, volume).
-                                   The 'time' key should be a datetime object.
+        Abstract method to fetch price data for a given symbol, date range, and interval.
+        Returns a list of dictionaries, each convertible to a PriceBar.
         """
         pass

@@ -2,13 +2,13 @@
 from datetime import date, datetime
 import logging
 from typing import List
-
 import pandas as pd
+from src.backtesting_engines.event_driven_engine.handlers.input_data import PriceBar
 from src.backtesting_engines.event_driven_engine.models.event import DailyUpdateEvent, MarketEvent
-from src.data.database_data_repository import DatabaseDataRepository
-from src.data.interval import Interval
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.data_handler import DataHandler
+from src.data.price_bars.repository import PriceDataRepository
+from src.data.price_bars.interval import Interval
 
 
 class DatabaseDataHandler(DataHandler):
@@ -30,7 +30,7 @@ class DatabaseDataHandler(DataHandler):
         self.start_date = start_date
         self.end_date = end_date
         self.interval = interval
-        self.repository = DatabaseDataRepository()
+        self.repository = PriceDataRepository()
         
         self._all_data_df: pd.DataFrame = pd.DataFrame()
         self._unique_timestamps: List[datetime] = []
@@ -98,21 +98,21 @@ class DatabaseDataHandler(DataHandler):
         all_rows_data = []
         for symbol in self.symbols:
             logging.info(f"Fetching {self.interval.value} data for {symbol}...")
-            price_data = self.repository.get_price_data(
+            price_bars: List[PriceBar] = self.repository.get_price_data(
                 symbol=symbol,
                 start_date=self.start_date,
                 end_date=self.end_date,
                 interval=self.interval
             )
-            for price_dict in price_data:
+            for pb in price_bars:
                 all_rows_data.append({
-                    "timestamp": price_dict["timestamp"],
-                    "symbol": symbol,
-                    "open": float(price_dict["open"]),
-                    "high": float(price_dict["high"]),
-                    "low": float(price_dict["low"]),
-                    "close": float(price_dict["close"]),
-                    "volume": float(price_dict["volume"])
+                    "timestamp": pb.timestamp,
+                    "symbol": pb.symbol,
+                    "open": float(pb.open), 
+                    "high": float(pb.high),
+                    "low": float(pb.low),
+                    "close": float(pb.close),
+                    "volume": float(pb.volume)
                 })
 
         if not all_rows_data:
