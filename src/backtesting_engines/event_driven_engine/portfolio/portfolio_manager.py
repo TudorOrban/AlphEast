@@ -54,8 +54,6 @@ class PortfolioManager:
         current_price = self._latest_market_prices[event.symbol]
         current_holding = self.portfolio_account.get_holding_quantity(event.symbol)
 
-        target_quantity = event.quantity if event.quantity is not None else Decimal("10")
-
         if event.direction == Signal.BUY.value:
             if current_holding == Decimal("0"):
                 calculated_quantity = self.position_sizing_method.calculate_quantity(

@@ -42,7 +42,7 @@ class SMACrossoverStrategy(NewBaseStrategy):
         slow_sma = sum(slow_sma_sum_list, Decimal('0')) / self.slow_period
         
         if fast_sma > slow_sma and not self._has_position:
-            self._put_signal_event(event.timestamp, Signal.BUY, quantity=Decimal("200"))
+            self._put_signal_event(event.timestamp, Signal.BUY)
             self._has_position = True
         elif fast_sma < slow_sma and self._has_position:
             self._put_signal_event(event.timestamp, Signal.SELL)

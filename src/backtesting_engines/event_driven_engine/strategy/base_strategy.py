@@ -35,8 +35,7 @@ class NewBaseStrategy(ABC):
         self,
         timestamp: datetime,
         direction: Signal,
-        strength: float = 1.0,
-        quantity: Optional[Decimal] = None
+        strength: float = 1.0
     ):
         """
         Helper method for strategy to create and put a SignalEvent onto the queue.
@@ -48,8 +47,7 @@ class NewBaseStrategy(ABC):
                 symbol=self.symbol,
                 timestamp=timestamp,
                 direction=signal_direction_str,
-                strength=strength,
-                quantity=quantity
+                strength=strength
             )
             self.event_queue.put(signal_event)
             logging.debug(f"Strategy for {self.symbol} issued {signal_direction_str} signal on {timestamp.date()}.")

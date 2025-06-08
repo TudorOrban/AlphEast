@@ -1,7 +1,9 @@
 from datetime import date
 from decimal import Decimal
 import logging
+from typing import List
 
+from src.backtesting_engines.event_driven_engine.strategy.base_strategy import NewBaseStrategy
 from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from src.shared.metrics import calculate_performance_metrics
 from src.shared.plotting import PerformancePlotter
@@ -19,7 +21,7 @@ class EventDrivenBacktester:
     """
     def __init__(
         self,
-        symbol: str,
+        symbols: List[str],
         start_date: date,
         end_date: date,
         initial_cash: float = 100000.0,
@@ -27,7 +29,7 @@ class EventDrivenBacktester:
         slow_period: int = 50,
         transaction_cost_percent: float = 0.001
     ):
-        self.symbol = symbol
+        self.symbols = symbols
         self.start_date = start_date
         self.end_date = end_date
         self.initial_cash = initial_cash
@@ -38,17 +40,20 @@ class EventDrivenBacktester:
 
         self.data_handler = EODDatabaseDataHandler(
             event_queue=self.event_queue,
-            symbol=self.symbol,
+            symbols=self.symbols,
             start_date=self.start_date,
             end_date=self.end_date
         )
 
-        self.strategy = SMACrossoverStrategy(
-            event_queue=self.event_queue,
-            symbol=self.symbol,
-            fast_period=fast_period,
-            slow_period=slow_period
-        )
+        self.strategies: List[NewBaseStrategy] = []
+        for symbol in self.symbols:
+            strategy = SMACrossoverStrategy(
+                event_queue=self.event_queue,
+                symbol=symbol,
+                fast_period=fast_period,
+                slow_period=slow_period
+            )
+            self.strategies.append(strategy)
 
         position_sizing_method = FixedAllocationSizing(0.5)
         self.portfolio_manager = PortfolioManager(
@@ -71,7 +76,7 @@ class EventDrivenBacktester:
         """
         Runs the main event loop of the backtesting engine
         """
-        logging.info(f"Starting Backtest for {self.symbol} from {self.start_date} to {self.end_date}")
+        logging.info(f"Starting Backtest for {self.symbols} from {self.start_date} to {self.end_date}")
 
         while self.data_handler.continue_backtest() or not self.event_queue.empty():
             # --- 1. Push next MarketEvents for the current "day" ---
@@ -88,7 +93,9 @@ class EventDrivenBacktester:
                 logging.debug(f"Processing event: {event}")
 
                 if event.type == "MARKET":
-                    self.strategy.on_market_event(event)
+                    for strategy in self.strategies:
+                        strategy.on_market_event(event)
+                        
                     self.portfolio_manager.on_market_event(event)
                     self.execution_handler.on_market_event(event)
 
@@ -104,7 +111,6 @@ class EventDrivenBacktester:
                 else:
                     logging.warning(f"Unknown event type received: {event.type}")
 
-        
         # -- Post-backtest Analysis ---
         daily_values = self.portfolio_manager.get_daily_values()
         trade_log = self.portfolio_manager.get_trade_log()
@@ -125,7 +131,7 @@ class EventDrivenBacktester:
             print(f"{metric.replace('_', ' ').title()}: {value}")
         print("-----------------------------------")
 
-        plot_title = f"Event-Driven Portfolio Equity Curve: {self.symbol} with {self.strategy.__class__.__name__}"
+        plot_title = f"Event-Driven Portfolio Equity Curve: Multiple Symbols with SMA Crossover"
         self.plotter.plot_equity_curve(daily_values, title=plot_title)
 
         return {

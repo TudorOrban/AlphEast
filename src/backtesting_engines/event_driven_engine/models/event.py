@@ -39,14 +39,12 @@ class SignalEvent(Event):
         timestamp: datetime,
         direction: Literal["BUY", "SELL", "HOLD"],
         strength: float = 1.0,
-        quantity: Optional[Decimal] = None
     ):
         self._type = "SIGNAL"
         self.symbol = symbol
         self.timestamp = timestamp
         self.direction = direction
         self.strength = strength
-        self.quantity = quantity
 
     @property
     def type(self) -> str:

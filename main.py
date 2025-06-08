@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from typing import List
 from src.backtesting_engines.simple_engine.strategy.examples.basic_strategy import BasicStrategy
 from config import ALPHA_VANTAGE_API_KEY
 from src.backtesting_engines.event_driven_engine.backtester import EventDrivenBacktester
@@ -20,10 +21,10 @@ def run_old_backtest(symbol: str, start_date: datetime, end_date: datetime):
 
     logging.info("--- Old Backtest Finished ---")
 
-def run_new_backtest(symbol: str, start_date: datetime, end_date: datetime):
+def run_new_backtest(symbols: List[str], start_date: datetime, end_date: datetime):
     logging.info("--- Running New (Event-Driven) Backtester ---")
     engine = EventDrivenBacktester(
-        symbol=symbol,
+        symbols=symbols,
         start_date=start_date.date(),
         end_date=end_date.date(),
         initial_cash=100000.0,
@@ -36,7 +37,11 @@ def run_new_backtest(symbol: str, start_date: datetime, end_date: datetime):
 
 
 if __name__ == "__main__":
-    SYMBOL = "MSFT"
+    SYMBOLS = ["AAPL", "MSFT"]
     START_DATE = datetime(2020, 1, 1)
     END_DATE = datetime(2025, 1, 1)
-    run_new_backtest(SYMBOL, START_DATE, END_DATE)
+    
+    # service = FinancialDataService(ALPHA_VANTAGE_API_KEY)
+    # service.fetch_and_save_eod_prices("AAPL", START_DATE, END_DATE)
+
+    run_new_backtest(SYMBOLS, START_DATE, END_DATE)
