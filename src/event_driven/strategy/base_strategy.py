@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from src.event_driven.models.event import MarketEvent, SignalEvent
 from src.event_driven.event_queue import EventQueue
-from strategy.models.signal import Signal
+from src.strategy.models.signal import Signal
 
 
 class NewBaseStrategy(ABC):

@@ -6,7 +6,7 @@ from typing import Any
 from src.event_driven.models.event import MarketEvent
 from src.event_driven.event_queue import EventQueue
 from src.event_driven.strategy.base_strategy import NewBaseStrategy
-from strategy.models.signal import Signal
+from src.strategy.models.signal import Signal
 
 
 class SMACrossoverStrategy(NewBaseStrategy):
