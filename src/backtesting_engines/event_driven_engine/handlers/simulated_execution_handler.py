@@ -1,7 +1,7 @@
 
 from decimal import Decimal
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict
 from src.backtesting_engines.event_driven_engine.models.signal import Signal
 from src.backtesting_engines.event_driven_engine.models.event_enums import OrderType
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
@@ -12,15 +12,20 @@ from src.backtesting_engines.event_driven_engine.handlers.execution_handler impo
 class SimulatedExecutionHandler(ExecutionHandler):
     """
     A concrete execution handler that simulates order execution.
-    Currently, it assumes market orders are filled at the close price of the bar
-    on which the order was generated. No slippage or partial fills are simulated.
+    It simulates slippage for market orders and considers high/low for limit orders.
     """
-    def __init__(self, event_queue: EventQueue, transaction_cost_percent: Decimal = Decimal("0.001")):
+    def __init__(
+        self, 
+        event_queue: EventQueue, 
+        transaction_cost_percent: Decimal = Decimal("0.001"),
+        slippage_percent: Decimal = Decimal("0.0005")
+    ):
         self.event_queue = event_queue
         # Cache latest known market prices to simulate fills
         self._latest_market_prices: Dict[str, Dict[str, Any]] = {}
         self.transaction_cost_percent = transaction_cost_percent
-    
+        self.slippage_percent = slippage_percent
+
         self._open_orders: Dict[str, OrderEvent] = {}
         logging.info("SimulatedExecutionHandler initialized.")
 
@@ -42,13 +47,13 @@ class SimulatedExecutionHandler(ExecutionHandler):
             if order.symbol == event.symbol
         ]
         for order_id in orders_for_current_symbol_to_process:
-            # Check if order still exists in _open_orders (it might have been removed by a previous related fill, though unlikely for different order_ids)
-            if order_id in self._open_orders:
-                order = self._open_orders[order_id]
-                if order.order_type == OrderType.MARKET:
-                    self._attempt_fill_market_order(order)
-                elif order.order_type == OrderType.LIMIT:
-                    self._attempt_fill_limit_order(order)
+            if order_id not in self._open_orders:
+                continue
+            order = self._open_orders[order_id]
+            if order.order_type == OrderType.MARKET:
+                self._attempt_fill_market_order(order)
+            elif order.order_type == OrderType.LIMIT:
+                self._attempt_fill_limit_order(order)
         
     def on_order_event(self, event: OrderEvent):
         self._open_orders[event.order_id] = event
@@ -63,26 +68,20 @@ class SimulatedExecutionHandler(ExecutionHandler):
                 self.push_failed_fill_event(order)
                 return
 
-            fill_price = fill_price_data["price"]
-            commission = (order.quantity * fill_price) * self.transaction_cost_percent
-            
-            fill_event = FillEvent(
-                order_id=order.order_id,
-                symbol=order.symbol,
-                timestamp=order.timestamp,
-                direction=order.direction,
-                quantity=order.quantity,
-                fill_price=fill_price,
-                commission=commission,
-                successful=True
-            )
-            self.event_queue.put(fill_event)
-            logging.info(f"Filled {order.direction} {order.quantity} of {order.symbol} at {fill_price:.2f} (Commission: {commission:.2f}) on {order.timestamp.date()}")
-
-            if order.order_id in self._open_orders: # Safety check
-                del self._open_orders[order.order_id]
+            base_price = fill_price_data["price"]
+            if order.direction == Signal.BUY:
+                fill_price = base_price * (Decimal("1") + self.slippage_percent)
+            elif order.direction == Signal.SELL:
+                fill_price = base_price * (Decimal("1") - self.slippage_percent)
             else:
-                logging.warning(f"Attempted to remove order {order.order_id} from _open_orders but it was not found. Already removed?")
+                fill_price = base_price 
+            
+            fill_price = max(Decimal("0.01"), fill_price) # Prevent zero or negative prices
+
+            commission = (order.quantity * fill_price) * self.transaction_cost_percent
+          
+            self._create_and_push_fill_event(order, fill_price, successful=True, commission=commission)
+            self._remove_order_from_open_orders(order.order_id)
 
         except Exception as e:
             logging.error(f"Error simulating order fill for {order.symbol} on {order.timestamp.date()}: {e}", exc_info=True)
@@ -112,42 +111,64 @@ class SimulatedExecutionHandler(ExecutionHandler):
                 fill_price = max(order.price, fill_price_data["close"])
 
             if can_fill:
+                fill_price = max(Decimal("0.01"), fill_price)
                 commission = (order.quantity * fill_price) * self.transaction_cost_percent
-                fill_event = FillEvent(
-                    order_id=order.order_id,
-                    symbol=order.symbol,
-                    timestamp=order.timestamp,
-                    direction=order.direction,
-                    quantity=order.quantity,
-                    fill_price=fill_price,
-                    commission=commission,
-                    successful=True
-                )
-                self.event_queue.put(fill_event)
-                logging.info(f"Filled LIMIT order {order.order_id}: {order.direction} {order.quantity} of {order.symbol} at {fill_price:.2f} (Limit: {order.price:.2f}, Commission: {commission:.2f}) on {order.timestamp.date()}")
                 
-                if order.order_id in self._open_orders:
-                    del self._open_orders[order.order_id]
+                self._create_and_push_fill_event(order, fill_price, successful=True, commission=commission)
+                self._remove_order_from_open_orders(order.order_id)
             else:
                 logging.debug(f"Limit order {order.order_id} for {order.symbol} ({order.direction} at {order.price:.2f}) not filled on {order.timestamp.date()}. Low: {fill_price_data['low']:.2f}, High: {fill_price_data['high']:.2f}")
 
         except Exception as e:
             logging.error(f"Error simulating limit order fill for {order.symbol} on {order.timestamp.date()} (Order ID: {order.order_id}): {e}", exc_info=True)
-            self._push_failed_fill_event(order)
+            self.push_failed_fill_event(order)
             
     def push_failed_fill_event(self, order: OrderEvent):
-        failed_fill_event = FillEvent(
+        self._create_and_push_fill_event(order, Decimal("0.0"), successful=False, commission=Decimal("0.0"))
+        self._remove_order_from_open_orders(order.order_id)
+    
+    # HELPER METHOD 1: Handles creating, sending, and logging FillEvents
+    def _create_and_push_fill_event(
+        self, 
+        order: OrderEvent, 
+        fill_price: Decimal, 
+        successful: bool, 
+        commission: Decimal = Decimal("0.0")
+    ):
+        """
+        Helper to create and put a FillEvent onto the queue, and log the outcome.
+        """
+        fill_event = FillEvent(
             order_id=order.order_id,
             symbol=order.symbol,
             timestamp=order.timestamp,
             direction=order.direction,
             quantity=order.quantity,
-            fill_price=Decimal("0.0"),
-            commission=Decimal("0.0"),
-            successful=False
+            fill_price=fill_price,
+            commission=commission,
+            successful=successful
         )
-        self.event_queue.put(failed_fill_event)
-        if order.order_id in self._open_orders:
-            del self._open_orders[order.order_id]
+        self.event_queue.put(fill_event)
+        
+        # Log based on success and order type
+        if successful:
+            log_message = (
+                f"Filled {order.order_type.name} order {order.order_id}: "
+                f"{order.direction.name} {order.quantity} of {order.symbol} at {fill_price:.2f} "
+                f"(Commission: {commission:.2f})"
+            )
+            if order.order_type == OrderType.LIMIT:
+                 log_message += f" (Limit: {order.price:.2f})" # Add limit price for context
+            logging.info(f"{log_message} on {order.timestamp.date()}")
         else:
-            logging.warning(f"Attempted to remove failed order {order.order_id} from _open_orders but it was not found. Already removed?")
+            logging.warning(f"Failed to fill order {order.order_id} for {order.symbol} on {order.timestamp.date()}.")
+
+    # HELPER METHOD 2: Handles removing orders from the internal tracking dictionary
+    def _remove_order_from_open_orders(self, order_id: str):
+        """
+        Helper to safely remove an order from the _open_orders dictionary.
+        """
+        if order_id in self._open_orders:
+            del self._open_orders[order_id]
+        else:
+            logging.warning(f"Attempted to remove order {order_id} from _open_orders but it was not found. It might have been removed already.")

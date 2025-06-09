@@ -3,6 +3,7 @@ from decimal import Decimal
 import logging
 from typing import Any, Dict, List, Optional
 import uuid
+from src.backtesting_engines.event_driven_engine.portfolio.benchmark_calculator import BenchmarkCalculator
 from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from src.backtesting_engines.event_driven_engine.position_sizing.base_position_sizing import BasePositionSizing
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
@@ -37,10 +38,7 @@ class PortfolioManager:
         self.position_sizing_method = position_sizing_method or FixedAllocationSizing(0.05)
         
         self.symbols = symbols
-        self._benchmark_holdings: Dict[str, Decimal] = {}
-        self._benchmark_daily_values: List[Dict[str, Any]] = []
-        self._benchmark_initialized: bool = False 
-        
+        self.benchmark_calculator = BenchmarkCalculator(symbols)
         self._pending_orders: Dict[str, OrderEvent] = {}
 
         logging.info(f"PortfolioManager initialized. Initial cash: ${self.portfolio_account.cash:.2f}")
@@ -192,11 +190,19 @@ class PortfolioManager:
         for both the strategy and the benchmark by calling helper functions.
         """
         self._current_date = event.timestamp.date()
+        if not self.benchmark_calculator.is_initialized():
+            self.benchmark_calculator.initialize_benchmark_holdings(
+                self.portfolio_account.initial_cash,
+                self._latest_market_prices
+            )
+            if not self.benchmark_calculator.is_initialized():
+                logging.warning(f"Benchmark could not be initialized on {self._current_date}. Daily benchmark values will be 0.")
 
-        self._handle_benchmark_initialization()
         self._calculate_and_record_strategy_value()
-        self._calculate_and_record_benchmark_value()
-
+        self.benchmark_calculator.calculate_and_record_benchmark_value( # NEW: Delegate benchmark calculation
+            self._current_date, 
+            self._latest_market_prices
+        )
 
     # --- Methods to retrieve final performance data for analysis ---
     def get_daily_values(self) -> List[Dict[str, Any]]:
@@ -204,7 +210,7 @@ class PortfolioManager:
 
     def get_benchmark_daily_values(self) -> List[Dict[str, Any]]:
         """Returns the benchmark's daily portfolio value history."""
-        return self._benchmark_daily_values
+        return self.benchmark_calculator.get_daily_values()
 
     def get_trade_log(self) -> List[Dict[str, Any]]:
         return self._trade_log
@@ -220,48 +226,6 @@ class PortfolioManager:
             "total_value": self.portfolio_account.get_total_value(self._latest_market_prices)
         }
     
-    def _initialize_benchmark_holdings(self, initial_cash_total: Decimal, current_market_prices: Dict[str, Decimal]):
-        """
-        Initializes the benchmark holdings by equally weighting the initial cash
-        across all symbols. This is called once at the first market event.
-        """
-        if not self.symbols:
-            logging.warning("No symbols provided to PortfolioManager")
-            self._benchmark_initialized = True
-            return
-        
-        available_symbols_for_benchmark = [s for s in self.symbols if s in current_market_prices and current_market_prices[s] > Decimal("0")]
-        if not available_symbols_for_benchmark:
-            logging.warning("No valid market prices available for any symbols to initialize benchmark. Skipping benchmark.")
-            self._benchmark_initialized = True
-            return
-        
-        cash_per_symbol = initial_cash_total / Decimal(str(len(self.symbols)))
-
-        for symbol in available_symbols_for_benchmark:
-            if current_market_prices[symbol] > Decimal("0"):
-                quantity = (cash_per_symbol / current_market_prices[symbol]).quantize(Decimal("1"))
-                self._benchmark_holdings[symbol] = quantity
-                logging.info(f"Benchmark initialized: Bought {quantity} of {symbol} at {current_market_prices[symbol]:.2f}")
-            else:
-                 logging.warning(f"Cannot initialize benchmark for {symbol}: current market price is zero or negative.")
-       
-        self._benchmark_initialized = True 
-
-    
-    def _handle_benchmark_initialization(self):
-        """
-        Initializes the benchmark holdings if not already done.
-        This is called once on the first DailyUpdateEvent.
-        """
-        if not self._benchmark_initialized:
-            self._initialize_benchmark_holdings(
-                self.portfolio_account.initial_cash,
-                self._latest_market_prices
-            )
-            if not self._benchmark_initialized:
-                logging.warning(f"Benchmark could not be initialized on {self._current_date}. Daily benchmark values will be 0.")
-
     def _calculate_and_record_strategy_value(self):
         """
         Calculates the strategy's total portfolio value for the current day
@@ -278,24 +242,3 @@ class PortfolioManager:
             "value": current_portfolio_value
         })
         logging.debug(f"Strategy portfolio value on {self._current_date}: ${current_portfolio_value:.2f}")
-
-    def _calculate_and_record_benchmark_value(self):
-        """
-        Calculates the benchmark's total portfolio value for the current day
-        and appends it to the benchmark daily values history.
-        """
-        benchmark_value = Decimal("0")
-        if self._benchmark_initialized:
-            for symbol, quantity in self._benchmark_holdings.items():
-                if symbol in self._latest_market_prices:
-                    benchmark_value += quantity * self._latest_market_prices[symbol]
-                else:
-                    logging.warning(f"Benchmark symbol {symbol} has no market price on {self._current_date}. Its contribution to benchmark value will be 0 for today.")
-        else:
-             logging.debug(f"Benchmark not initialized. Benchmark value will be $0.00 on {self._current_date}.")
-        
-        self._benchmark_daily_values.append({
-            "date": self._current_date,
-            "value": benchmark_value
-        })
-        logging.debug(f"Benchmark portfolio value on {self._current_date}: ${benchmark_value:.2f}")
