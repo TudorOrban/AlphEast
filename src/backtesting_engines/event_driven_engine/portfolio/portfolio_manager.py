@@ -24,7 +24,7 @@ class PortfolioManager:
         event_queue: EventQueue,
         initial_cash: float = 100000.0,
         transaction_cost_percent: Decimal = Decimal("0.001"),
-        position_sizing_method: BasePositionSizing = None,
+        position_sizing_method: Optional[BasePositionSizing] = None,
         symbols: List[str] = []
     ):
         self.event_queue = event_queue

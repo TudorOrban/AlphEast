@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from src.backtesting_engines.event_driven_engine.models.event import MarketEvent, SignalEvent
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
@@ -14,10 +14,10 @@ class BaseStrategy(ABC):
     Abstract base class for the trading strategy in the new event-driven backtesting engine.
     Strategies process MarketEvents and generate SignalEvents.
     """
-    def __init__(self, event_queue: EventQueue, symbol: str, **kwargs: Any):
+    def __init__(self, symbol: str, **kwargs: Any):
         if not symbol:
             raise ValueError("Strategy must be initialized with a target symbol.")
-        self.event_queue = event_queue
+        self.event_queue: Optional[EventQueue] = None
         self.symbol: str = symbol
         self.params: Dict[str, Any] = kwargs
         logging.info(f"{self.__class__.__name__} initialized for {symbol} with params: {kwargs}")
@@ -30,12 +30,18 @@ class BaseStrategy(ABC):
         """
         pass
 
+    def set_event_queue(self, event_queue: EventQueue):
+        self.event_queue = event_queue
+
     def _put_signal_event(
         self,
         timestamp: datetime,
         direction: Signal,
         strength: float = 1.0
     ):
+        if self.event_queue is None:
+            raise RuntimeError("Event queue not set for strategy. Call set_event_queue() first.")
+        
         signal_event = SignalEvent(
             symbol=self.symbol,
             timestamp=timestamp,

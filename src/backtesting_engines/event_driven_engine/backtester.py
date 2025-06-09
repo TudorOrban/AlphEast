@@ -1,90 +1,77 @@
-from datetime import date
 from decimal import Decimal
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from src.backtesting_engines.event_driven_engine.models.event_enums import EventType
-from src.data.price_bars.interval import Interval
-from src.shared.metrics import calculate_performance_metrics
-from src.shared.plotting import PerformancePlotter
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.database_data_handler import DatabaseDataHandler
 from src.backtesting_engines.event_driven_engine.handlers.simulated_execution_handler import SimulatedExecutionHandler
 from src.backtesting_engines.event_driven_engine.models.input_data import PriceBar
 from src.backtesting_engines.event_driven_engine.portfolio.portfolio_manager import PortfolioManager
-from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from src.backtesting_engines.event_driven_engine.strategy.base_strategy import BaseStrategy
-from src.backtesting_engines.event_driven_engine.strategy.examples.sma_crossover_strategy import SMACrossoverStrategy
+from src.backtesting_engines.event_driven_engine.position_sizing.base_position_sizing import BasePositionSizing
+from src.backtesting_engines.event_driven_engine.backtest_config import BacktestConfig
+from src.backtesting_engines.event_driven_engine.models.event_enums import EventType
+from src.data.sources.financial_data_client import FinancialDataClient
+from src.shared.metrics import calculate_performance_metrics
+from src.shared.plotting import PerformancePlotter
 
-class EventDrivenBacktester:
+class BacktestingEngine:
     """
     Orchestrates the event-driven backtesting process.
     Initializes all components and runs the main event loop.
     """
     def __init__(
         self,
-        symbols: List[str],
-        start_date: date,
-        end_date: date,
-        interval: Interval = Interval.DAILY,
-        initial_cash: float = 100000.0,
-        fast_period: int = 10,
-        slow_period: int = 50,
-        transaction_cost_percent: float = 0.001,
-        price_data: Dict[str, List[PriceBar]] = {}
+        config: BacktestConfig,
+        price_data: Dict[str, List[PriceBar]], # Symbol -> its price data
+        data_client: Optional[FinancialDataClient],
+        strategies: List[BaseStrategy],
+        position_sizing_method: Optional[BasePositionSizing] = None
     ):
-        self.symbols = symbols
-        self.start_date = start_date
-        self.end_date = end_date
-        self.interval = interval
-        self.initial_cash = initial_cash
-
-        decimal_transaction_cost = Decimal(str(transaction_cost_percent))
-
+        self.config = config
         self.event_queue = EventQueue()
+
+        decimal_transaction_cost = Decimal(str(self.config.transaction_cost_percent))
+        decimal_slippage_percent = Decimal(str(self.config.slippage_percent))
 
         self.data_handler = DatabaseDataHandler(
             event_queue=self.event_queue,
-            symbols=self.symbols,
-            start_date=self.start_date,
-            end_date=self.end_date,
-            interval=self.interval,
-            price_data=price_data
+            symbols=self.config.symbols,
+            price_data=price_data,
+            data_client=data_client,
+            start_date=self.config.start_date,
+            end_date=self.config.end_date,    
+            interval=self.config.interval   
         )
 
         self.strategies: List[BaseStrategy] = []
-        for symbol in self.symbols:
-            strategy = SMACrossoverStrategy(
-                event_queue=self.event_queue,
-                symbol=symbol,
-                fast_period=fast_period,
-                slow_period=slow_period
-            )
-            self.strategies.append(strategy)
-
-        position_sizing_method = FixedAllocationSizing(0.5)
+        for strategy_instance in strategies:
+            strategy_instance.set_event_queue(self.event_queue)
+            self.strategies.append(strategy_instance)
+        
         self.portfolio_manager = PortfolioManager(
             event_queue=self.event_queue,
-            initial_cash=self.initial_cash,
+            initial_cash=self.config.initial_cash,
             transaction_cost_percent=decimal_transaction_cost,
             position_sizing_method=position_sizing_method,
-            symbols=self.symbols
+            symbols=self.config.symbols
         )
 
         self.execution_handler = SimulatedExecutionHandler(
             event_queue=self.event_queue,
-            transaction_cost_percent=decimal_transaction_cost
+            transaction_cost_percent=decimal_transaction_cost,
+            slippage_percent=decimal_slippage_percent
         )
 
         self.plotter = PerformancePlotter()
 
-        logging.info("New Backtester initialized")
-
+        logging.info("New Backtester initialized with config")
+        
     def run(self):
         """
         Runs the main event loop of the backtesting engine
         """
-        logging.info(f"Starting Backtest for {self.symbols} from {self.start_date} to {self.end_date}")
+        logging.info(f"Starting Backtest for {self.config.symbols} from {self.config.start_date} to {self.config.end_date}")
 
         while self.data_handler.continue_backtest() or not self.event_queue.empty():
             # --- 1. Push next MarketEvents for the current interval ---
@@ -169,7 +156,7 @@ class EventDrivenBacktester:
         performance_metrics: Dict[str, Any]
     ):
         print("\n--- Event-Driven Backtest Summary ---")
-        print(f"Initial Cash: ${self.initial_cash:.2f}")
+        print(f"Initial Cash: ${self.config.initial_cash:.2f}")
         print(f"Final Cash: ${final_portfolio_summary["cash"]:.2f}")
         print(f"Final Holdings: {final_portfolio_summary["holdings"]}")
         print(f"Total Trades: {len(trade_log)}")

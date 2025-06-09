@@ -1,13 +1,14 @@
 
 from datetime import date, datetime
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 import pandas as pd
 from src.backtesting_engines.event_driven_engine.models.input_data import PriceBar
 from src.backtesting_engines.event_driven_engine.models.event import DailyUpdateEvent, MarketEvent
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.data_handler import DataHandler
 from src.data.price_bars.interval import Interval
+from src.data.sources.financial_data_client import FinancialDataClient
 
 
 class DatabaseDataHandler(DataHandler):
@@ -23,7 +24,8 @@ class DatabaseDataHandler(DataHandler):
         start_date: date, 
         end_date: date,
         interval: Interval,
-        price_data: Dict[str, List[PriceBar]] # Symbol -> its price data
+        price_data: Dict[str, List[PriceBar]],
+        data_client: Optional[FinancialDataClient] = None
     ):
         self.event_queue = event_queue
         self.symbols = symbols
