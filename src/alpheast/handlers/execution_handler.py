@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from alpheast.models.event import MarketEvent, OrderEvent
+from alpheast.events.event import MarketEvent, OrderEvent
 
 
 class ExecutionHandler(ABC):

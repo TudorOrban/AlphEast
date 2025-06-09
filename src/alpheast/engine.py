@@ -2,17 +2,17 @@ from decimal import Decimal
 import logging
 from typing import Dict, List, Optional
 
-from alpheast.backtest_results import BacktestResults
-from alpheast.event_queue import EventQueue
+from alpheast.data.financial_data_client import FinancialDataClient
+from alpheast.models.backtest_results import BacktestResults
+from alpheast.events.event_queue import EventQueue
 from alpheast.handlers.database_data_handler import DatabaseDataHandler
 from alpheast.handlers.simulated_execution_handler import SimulatedExecutionHandler
-from alpheast.models.input_data import PriceBar
+from alpheast.models.price_bar import PriceBar
 from alpheast.models.backtest_config import BacktestConfig
-from alpheast.models.event_enums import EventType
+from alpheast.events.event_enums import EventType
 from alpheast.portfolio.portfolio_manager import PortfolioManager
 from alpheast.strategy.base_strategy import BaseStrategy
 from alpheast.position_sizing.base_position_sizing import BasePositionSizing
-from alpheast.data.sources.financial_data_client import FinancialDataClient
 from alpheast.shared.metrics import calculate_performance_metrics
 from alpheast.shared.plotting import PerformancePlotter
 

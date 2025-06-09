@@ -4,8 +4,8 @@ from datetime import datetime
 import logging
 from typing import Any, Dict, Optional
 
-from alpheast.models.event import MarketEvent, SignalEvent
-from alpheast.event_queue import EventQueue
+from alpheast.events.event import MarketEvent, SignalEvent
+from alpheast.events.event_queue import EventQueue
 from alpheast.models.signal import Signal
 
 

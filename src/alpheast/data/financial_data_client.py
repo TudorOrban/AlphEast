@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List
 
-from alpheast.data.price_bars.interval import Interval
+from alpheast.models.interval import Interval
 
 
 class FinancialDataClient(ABC):

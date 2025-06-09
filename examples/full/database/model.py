@@ -1,6 +1,6 @@
 
 from sqlalchemy import Column, DateTime, Integer, Numeric, String
-from alpheast.data.base_model import Base
+from examples.full.database.base_model import Base
 
 
 class PriceBarEntity(Base):

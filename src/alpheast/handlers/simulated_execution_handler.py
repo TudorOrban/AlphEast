@@ -3,9 +3,9 @@ from decimal import Decimal
 import logging
 from typing import Any, Dict
 from alpheast.models.signal import Signal
-from alpheast.models.event_enums import OrderType
-from alpheast.event_queue import EventQueue
-from alpheast.models.event import FillEvent, MarketEvent, OrderEvent
+from alpheast.events.event_enums import OrderType
+from alpheast.events.event_queue import EventQueue
+from alpheast.events.event import FillEvent, MarketEvent, OrderEvent
 from alpheast.handlers.execution_handler import ExecutionHandler
 
 

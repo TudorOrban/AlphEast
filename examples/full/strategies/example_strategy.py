@@ -8,12 +8,12 @@ from alpheast.strategy.base_strategy import BaseStrategy
 from alpheast.models.signal import Signal
 
 
-class SMACrossoverStrategy(BaseStrategy):
+class ExampleStrategy(BaseStrategy):
     """
     A Simple Moving Average (SMA) Crossover trading strategy.
     Generates BUY/SELL signals based on fast SMA crossing above/below slow SMA.
     """
-    def __init__(self, symbol: str, fast_period: int, slow_period: int, **kwargs: Any):
+    def __init__(self, symbol: str, fast_period: int = 10, slow_period: int = 50, **kwargs: Any):
         super().__init__(symbol, **kwargs)
         if fast_period >= slow_period:
             raise ValueError("Fast period must be less than slow period")

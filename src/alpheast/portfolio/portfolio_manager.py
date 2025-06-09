@@ -6,9 +6,9 @@ import uuid
 from alpheast.portfolio.benchmark_calculator import BenchmarkCalculator
 from alpheast.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from alpheast.position_sizing.base_position_sizing import BasePositionSizing
-from alpheast.event_queue import EventQueue
-from alpheast.models.event_enums import OrderType
-from alpheast.models.event import DailyUpdateEvent, FillEvent, MarketEvent, OrderEvent, SignalEvent
+from alpheast.events.event_queue import EventQueue
+from alpheast.events.event_enums import OrderType
+from alpheast.events.event import DailyUpdateEvent, FillEvent, MarketEvent, OrderEvent, SignalEvent
 from alpheast.models.signal import Signal
 from alpheast.shared.portfolio import Portfolio
 

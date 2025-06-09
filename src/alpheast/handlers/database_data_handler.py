@@ -3,12 +3,12 @@ from datetime import date, datetime
 import logging
 from typing import Dict, List, Optional
 import pandas as pd
-from alpheast.models.input_data import PriceBar
-from alpheast.models.event import DailyUpdateEvent, MarketEvent
-from alpheast.event_queue import EventQueue
+from alpheast.data.financial_data_client import FinancialDataClient
+from alpheast.events.event import DailyUpdateEvent, MarketEvent
+from alpheast.events.event_queue import EventQueue
 from alpheast.handlers.data_handler import DataHandler
-from alpheast.data.price_bars.interval import Interval
-from alpheast.data.sources.financial_data_client import FinancialDataClient
+from alpheast.models.interval import Interval
+from alpheast.models.price_bar import PriceBar
 
 
 class DatabaseDataHandler(DataHandler):

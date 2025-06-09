@@ -1,8 +1,8 @@
 from datetime import datetime
 import logging
-from alpheast.data.price_bars.interval import Interval
-from alpheast.data.price_bars.repository import PriceDataRepository
-from alpheast.data.sources.alpha_vantage_client import AlphaVantageClient 
+from alpheast.models.interval import Interval
+from examples.full.clients.alpha_vantage_client import AlphaVantageClient
+from examples.full.database.repository import PriceDataRepository 
 
 class FinancialDataService:
     def __init__(self, alpha_vantage_api_key: str):

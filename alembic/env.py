@@ -10,7 +10,7 @@ from alembic import context
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from alpheast.data.base_model import Base
+from examples.full.database.base_model import Base
 from alpheast.data.eod_prices.model import EODPrice
 
 config = context.config

@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List
 
-from alpheast.data.price_bars.interval import Interval
+from alpheast.models.interval import Interval
 
 
 class BacktestConfig:

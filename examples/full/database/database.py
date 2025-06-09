@@ -4,17 +4,10 @@ from typing import Generator
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from alpheast.data.base_model import Base
+from config import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
+from examples.full.database.base_model import Base
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-import os
-
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "alpheast_db")
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "cjql195jsov")
-ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "example-key")
 
 class Database:
     """

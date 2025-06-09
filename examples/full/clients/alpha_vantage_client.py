@@ -3,8 +3,8 @@ from decimal import Decimal
 import logging
 import requests
 from typing import Any, Dict, List, Optional
-from alpheast.data.price_bars.interval import Interval
-from alpheast.data.sources.financial_data_client import FinancialDataClient
+from alpheast.data.financial_data_client import FinancialDataClient
+from alpheast.models.interval import Interval
 
 
 class AlphaVantageClient(FinancialDataClient):

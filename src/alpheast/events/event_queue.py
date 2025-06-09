@@ -3,7 +3,7 @@ import logging
 import queue
 from typing import Optional
 
-from alpheast.models.event import Event
+from alpheast.events.event import Event
 
 
 class EventQueue:

@@ -3,7 +3,7 @@ from collections import deque
 from decimal import Decimal
 import logging
 from typing import Any
-from alpheast.models.event import MarketEvent
+from alpheast.events.event import MarketEvent
 from alpheast.strategy.base_strategy import BaseStrategy
 from alpheast.models.signal import Signal
 

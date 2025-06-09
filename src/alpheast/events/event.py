@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any, Dict, Literal, Optional
 
 from alpheast.models.signal import Signal
-from alpheast.models.event_enums import EventType, OrderType
+from alpheast.events.event_enums import EventType, OrderType
 
 
 class Event(ABC):

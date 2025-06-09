@@ -5,10 +5,10 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import delete, func, insert, select
-from alpheast.models.input_data import PriceBar
-from alpheast.data.price_bars.interval import Interval
-from alpheast.data.price_bars.model import PriceBarEntity
-from alpheast.data.database import Database
+from alpheast.models.price_bar import PriceBar
+from alpheast.models.interval import Interval
+from examples.full.database.database import Database
+from examples.full.database.model import PriceBarEntity
 
 
 class PriceDataRepository:
