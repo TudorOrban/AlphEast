@@ -18,9 +18,12 @@ alembic.ini
 .ipynb_checkpoints/
 
 # IDEs
-.idea/  # PyCharm
-.vscode/ # VS Code
+.idea/
+.vscode/
 
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Env
+.env

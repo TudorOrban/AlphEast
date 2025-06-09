@@ -2,6 +2,7 @@
 from decimal import Decimal
 import logging
 from typing import Dict
+from src.backtesting_engines.event_driven_engine.models.event_enums import OrderType
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.models.event import FillEvent, MarketEvent, OrderEvent
 from src.backtesting_engines.event_driven_engine.handlers.execution_handler import ExecutionHandler
@@ -38,7 +39,7 @@ class SimulatedExecutionHandler(ExecutionHandler):
         For simplicity, market orders are filled at the latest known close price.
         Limit orders are not yet supported.
         """
-        if event.order_type == "LIMIT":
+        if event.order_type == OrderType.LIMIT:
             logging.warning(f"Limit order for {event.symbol} on {event.timestamp.date()} not supported by SimulatedExecutionHandler. Order not filled.")
             failed_fill_event = FillEvent(
                 symbol=event.symbol,

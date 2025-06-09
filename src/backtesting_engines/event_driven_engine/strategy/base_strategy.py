@@ -1,16 +1,15 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from decimal import Decimal
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from src.backtesting_engines.event_driven_engine.models.event import MarketEvent, SignalEvent
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
-from src.shared.signal import Signal
+from src.backtesting_engines.event_driven_engine.models.signal import Signal
 
 
-class NewBaseStrategy(ABC):
+class BaseStrategy(ABC):
     """
     Abstract base class for the trading strategy in the new event-driven backtesting engine.
     Strategies process MarketEvents and generate SignalEvents.
@@ -37,17 +36,11 @@ class NewBaseStrategy(ABC):
         direction: Signal,
         strength: float = 1.0
     ):
-        """
-        Helper method for strategy to create and put a SignalEvent onto the queue.
-        """
-        signal_direction_str = direction.value
-
-        if signal_direction_str in ["BUY", "SELL"]:
-            signal_event = SignalEvent(
-                symbol=self.symbol,
-                timestamp=timestamp,
-                direction=signal_direction_str,
-                strength=strength
-            )
-            self.event_queue.put(signal_event)
-            logging.debug(f"Strategy for {self.symbol} issued {signal_direction_str} signal on {timestamp.date()}.")
+        signal_event = SignalEvent(
+            symbol=self.symbol,
+            timestamp=timestamp,
+            direction=direction,
+            strength=strength
+        )
+        self.event_queue.put(signal_event)
+        logging.debug(f"Strategy for {self.symbol} issued {direction} signal on {timestamp.date()}.")

@@ -5,9 +5,10 @@ from typing import Any, Dict, List, Optional
 from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from src.backtesting_engines.event_driven_engine.position_sizing.base_position_sizing import BasePositionSizing
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
+from src.backtesting_engines.event_driven_engine.models.event_enums import OrderType
 from src.backtesting_engines.event_driven_engine.models.event import DailyUpdateEvent, FillEvent, MarketEvent, OrderEvent, SignalEvent
+from src.backtesting_engines.event_driven_engine.models.signal import Signal
 from src.shared.portfolio import Portfolio
-from src.shared.signal import Signal
 
 
 class PortfolioManager:
@@ -60,9 +61,9 @@ class PortfolioManager:
         current_price = self._latest_market_prices[event.symbol]
         current_holding = self.portfolio_account.get_holding_quantity(event.symbol)
 
-        if event.direction == Signal.BUY.value:
+        if event.direction == Signal.BUY:
             self._buy_on_signal_event(event, current_holding, current_price)
-        elif event.direction == Signal.SELL.value:
+        elif event.direction == Signal.SELL:
             self._sell_on_signal_event(event, current_holding, current_price)
 
     def _buy_on_signal_event(
@@ -90,9 +91,9 @@ class PortfolioManager:
                 order_event = OrderEvent(
                     symbol=event.symbol,
                     timestamp=event.timestamp,
-                    direction="BUY",
+                    direction=Signal.BUY,
                     quantity=calculated_quantity,
-                    order_type="MARKET",
+                    order_type=OrderType.MARKET,
                     price=current_price
                 )
                 self.event_queue.put(order_event)
@@ -118,9 +119,9 @@ class PortfolioManager:
         order_event = OrderEvent(
             symbol=event.symbol,
             timestamp=event.timestamp,
-            direction="SELL",
+            direction=Signal.SELL,
             quantity=quantity_to_sell,
-            order_type="MARKET",
+            order_type=OrderType.MARKET,
             price=current_price
         )
         self.event_queue.put(order_event)
@@ -132,7 +133,7 @@ class PortfolioManager:
         cash and holdings of the portfolio.
         """
         if event.successful:
-            if event.direction == "BUY":
+            if event.direction == Signal.BUY:
                 self.portfolio_account.buy(
                     symbol=event.symbol,
                     quantity=event.quantity,
@@ -140,7 +141,7 @@ class PortfolioManager:
                     timestamp=event.timestamp,
                     commission=event.commission
                 )
-            elif event.direction == "SELL":
+            elif event.direction == Signal.SELL:
                 self.portfolio_account.sell(
                     symbol=event.symbol,
                     quantity=event.quantity,

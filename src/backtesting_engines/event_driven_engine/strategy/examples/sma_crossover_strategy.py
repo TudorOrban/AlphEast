@@ -5,11 +5,11 @@ import logging
 from typing import Any
 from src.backtesting_engines.event_driven_engine.models.event import MarketEvent
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
-from src.backtesting_engines.event_driven_engine.strategy.base_strategy import NewBaseStrategy
-from src.shared.signal import Signal
+from src.backtesting_engines.event_driven_engine.strategy.base_strategy import BaseStrategy
+from src.backtesting_engines.event_driven_engine.models.signal import Signal
 
 
-class SMACrossoverStrategy(NewBaseStrategy):
+class SMACrossoverStrategy(BaseStrategy):
     """
     A Simple Moving Average (SMA) Crossover trading strategy.
     Generates BUY/SELL signals based on fast SMA crossing above/below slow SMA.

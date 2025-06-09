@@ -3,6 +3,7 @@ from decimal import Decimal
 import logging
 from typing import Any, Dict, List
 
+from src.backtesting_engines.event_driven_engine.models.event_enums import EventType
 from src.data.price_bars.interval import Interval
 from src.shared.metrics import calculate_performance_metrics
 from src.shared.plotting import PerformancePlotter
@@ -12,7 +13,7 @@ from src.backtesting_engines.event_driven_engine.handlers.simulated_execution_ha
 from src.backtesting_engines.event_driven_engine.models.input_data import PriceBar
 from src.backtesting_engines.event_driven_engine.portfolio.portfolio_manager import PortfolioManager
 from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
-from src.backtesting_engines.event_driven_engine.strategy.base_strategy import NewBaseStrategy
+from src.backtesting_engines.event_driven_engine.strategy.base_strategy import BaseStrategy
 from src.backtesting_engines.event_driven_engine.strategy.examples.sma_crossover_strategy import SMACrossoverStrategy
 
 class EventDrivenBacktester:
@@ -51,7 +52,7 @@ class EventDrivenBacktester:
             price_data=price_data
         )
 
-        self.strategies: List[NewBaseStrategy] = []
+        self.strategies: List[BaseStrategy] = []
         for symbol in self.symbols:
             strategy = SMACrossoverStrategy(
                 event_queue=self.event_queue,
@@ -139,23 +140,23 @@ class EventDrivenBacktester:
 
         logging.debug(f"Processing event: {event}")
 
-        if event.type == "MARKET":
+        if event.type == EventType.MARKET:
             for strategy in self.strategies:
                 strategy.on_market_event(event)
                 
             self.portfolio_manager.on_market_event(event)
             self.execution_handler.on_market_event(event)
 
-        elif event.type == "SIGNAL":
+        elif event.type == EventType.SIGNAL:
             self.portfolio_manager.on_signal_event(event)
 
-        elif event.type == "ORDER":
+        elif event.type == EventType.ORDER:
             self.execution_handler.on_order_event(event)
 
-        elif event.type == "FILL":
+        elif event.type == EventType.FILL:
             self.portfolio_manager.on_fill_event(event)
 
-        elif event.type == "DAILY_UPDATE":
+        elif event.type == EventType.DAILY_UPDATE:
             self.portfolio_manager.on_daily_update_event(event)
 
         else:

@@ -1,6 +1,7 @@
 
 from decimal import Decimal
 from typing import Any, Dict, Literal
+from src.backtesting_engines.event_driven_engine.models.signal import Signal
 from src.backtesting_engines.event_driven_engine.position_sizing.base_position_sizing import BasePositionSizing
 
 
@@ -11,15 +12,15 @@ class FixedAllocationSizing(BasePositionSizing):
     def calculate_quantity(
         self,
         symbol: str,
-        direction: Literal["BUY", "SELL"],
+        direction: Signal,
         current_price: Decimal,
         portfolio_cash: Decimal,
         portfolio_holdings: Dict[str, Decimal],
         **kwargs: Any
     ) -> Decimal:
-        if direction == "BUY":
+        if direction == Signal.BUY:
             cash_to_allocate = portfolio_cash * self.allocation_percent
             return (cash_to_allocate / current_price).quantize(Decimal("1"))
-        elif direction == "SELL":
+        elif direction == Signal.SELL:
             return portfolio_holdings.get(symbol, Decimal("0"))
         return Decimal("0")

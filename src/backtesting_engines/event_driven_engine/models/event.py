@@ -3,6 +3,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, Literal, Optional
 
+from src.backtesting_engines.event_driven_engine.models.signal import Signal
+from src.backtesting_engines.event_driven_engine.models.event_enums import EventType, OrderType
+
 
 class Event(ABC):
     """
@@ -16,14 +19,19 @@ class MarketEvent(Event):
     """
     Handles the receipt of new market data (e.g. a new bar for a specific symbol)
     """
-    def __init__(self, symbol: str, timestamp: datetime, data: Dict[str, Any]):
-        self._type = "MARKET"
+    def __init__(
+        self, 
+        symbol: str, 
+        timestamp: datetime, 
+        data: Dict[str, Any]
+    ):
+        self._type = EventType.MARKET
         self.symbol = symbol
         self.timestamp = timestamp
         self.data = data
 
     @property
-    def type(self) -> str:
+    def type(self) -> EventType:
         return self._type
     
     def __repr__(self):
@@ -37,17 +45,17 @@ class SignalEvent(Event):
         self,
         symbol: str,
         timestamp: datetime,
-        direction: Literal["BUY", "SELL", "HOLD"],
+        direction: Signal,
         strength: float = 1.0,
     ):
-        self._type = "SIGNAL"
+        self._type = EventType.SIGNAL
         self.symbol = symbol
         self.timestamp = timestamp
         self.direction = direction
         self.strength = strength
 
     @property
-    def type(self) -> str:
+    def type(self) -> EventType:
         return self._type
     
     def __repr__(self):
@@ -62,19 +70,17 @@ class OrderEvent(Event):
         self,
         symbol: str,
         timestamp: datetime,
-        direction: Literal["BUY", "SELL"],
+        direction: Signal,
         quantity: Decimal,
-        order_type: Literal["MARKET", "LIMIT"] = "MARKET",
+        order_type: OrderType = OrderType.MARKET,
         price: Optional[Decimal] = None
     ):
         if not (isinstance(quantity, Decimal) and quantity > Decimal("0")):
             raise ValueError("Order quantity must be a positive Decimal.")
-        if order_type == "LIMIT" and price is None:
+        if order_type == OrderType.LIMIT and price is None:
             raise ValueError("Limit orders require a price.")
-        if direction not in ["BUY", "SELL"]:
-            raise ValueError("Order direction must be 'BUY' or 'SELL'")
         
-        self._type = "ORDER"
+        self._type = EventType.ORDER
         self.symbol = symbol
         self.timestamp = timestamp
         self.direction = direction
@@ -83,7 +89,7 @@ class OrderEvent(Event):
         self.price = price
 
     @property
-    def type(self) -> str:
+    def type(self) -> EventType:
         return self._type
 
     def __repr__(self):
@@ -102,7 +108,7 @@ class FillEvent(Event):
         self,
         symbol: str,
         timestamp: datetime,
-        direction: Literal["BUY", "SELL"],
+        direction: Signal,
         quantity: Decimal,
         fill_price: Decimal,
         commission: Decimal = Decimal('0.0'),
@@ -112,10 +118,8 @@ class FillEvent(Event):
             raise ValueError("Fill quantity must be a positive Decimal.")
         if not (isinstance(fill_price, Decimal) and fill_price > Decimal('0')):
             raise ValueError("Fill price must be a positive Decimal.")
-        if direction not in ["BUY", "SELL"]:
-            raise ValueError("Fill direction must be 'BUY' or 'SELL'.")
 
-        self._type = "FILL"
+        self._type = EventType.FILL
         self.symbol = symbol
         self.timestamp = timestamp
         self.direction = direction
@@ -125,7 +129,7 @@ class FillEvent(Event):
         self.successful = successful
 
     @property
-    def type(self) -> str:
+    def type(self) -> EventType:
         return self._type
 
     def __repr__(self):
@@ -141,8 +145,12 @@ class DailyUpdateEvent:
     triggering daily portfolio value calculations and updates.
     """
     def __init__(self, timestamp: datetime):
-        self.type = "DAILY_UPDATE"
+        self._type = EventType.DAILY_UPDATE
         self.timestamp = timestamp
 
+    @property
+    def type(self) -> EventType:
+        return self._type
+    
     def __repr__(self):
         return f"DailyUpdateEvent(timestamp={self.timestamp.date()})"
