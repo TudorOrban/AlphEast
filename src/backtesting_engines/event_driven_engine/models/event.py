@@ -68,6 +68,7 @@ class OrderEvent(Event):
     """
     def __init__(
         self,
+        order_id: str,
         symbol: str,
         timestamp: datetime,
         direction: Signal,
@@ -81,6 +82,7 @@ class OrderEvent(Event):
             raise ValueError("Limit orders require a price.")
         
         self._type = EventType.ORDER
+        self.order_id = order_id
         self.symbol = symbol
         self.timestamp = timestamp
         self.direction = direction
@@ -93,11 +95,9 @@ class OrderEvent(Event):
         return self._type
 
     def __repr__(self):
-        return (
-            f"OrderEvent(symbol='{self.symbol}', timestamp={self.timestamp.date()}, "
-            f"direction='{self.direction}', quantity={self.quantity}, type='{self.order_type}'"
-            f"{f', price={self.price}' if self.price else ''})"
-        )
+        return (f"OrderEvent(order_id='{self.order_id}', symbol='{self.symbol}', direction='{self.direction}', "
+                f"quantity={self.quantity}, type='{self.order_type}', price={self.price}, "
+                f"timestamp={self.timestamp.date()})")
     
 class FillEvent(Event):
     """
@@ -106,6 +106,7 @@ class FillEvent(Event):
     """
     def __init__(
         self,
+        order_id: str,
         symbol: str,
         timestamp: datetime,
         direction: Signal,
@@ -120,6 +121,7 @@ class FillEvent(Event):
             raise ValueError("Fill price must be a positive Decimal.")
 
         self._type = EventType.FILL
+        self.order_id = order_id
         self.symbol = symbol
         self.timestamp = timestamp
         self.direction = direction
@@ -133,11 +135,9 @@ class FillEvent(Event):
         return self._type
 
     def __repr__(self):
-        return (
-            f"FillEvent(symbol='{self.symbol}', timestamp={self.timestamp.date()}, "
-            f"direction='{self.direction}', quantity={self.quantity}, fill_price={self.fill_price:.2f}, "
-            f"commission={self.commission:.2f}, successful={self.successful})"
-        )
+        return (f"FillEvent(order_id='{self.order_id}', symbol='{self.symbol}', direction='{self.direction}', "
+                f"quantity={self.quantity}, fill_price={self.fill_price}, commission={self.commission}, "
+                f"successful={self.successful}, timestamp={self.timestamp.date()})")
     
 class DailyUpdateEvent:
     """

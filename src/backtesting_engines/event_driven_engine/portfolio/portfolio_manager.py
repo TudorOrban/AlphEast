@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 import logging
 from typing import Any, Dict, List, Optional
+import uuid
 from src.backtesting_engines.event_driven_engine.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from src.backtesting_engines.event_driven_engine.position_sizing.base_position_sizing import BasePositionSizing
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
@@ -40,6 +41,8 @@ class PortfolioManager:
         self._benchmark_daily_values: List[Dict[str, Any]] = []
         self._benchmark_initialized: bool = False 
         
+        self._pending_orders: Dict[str, OrderEvent] = {}
+
         logging.info(f"PortfolioManager initialized. Initial cash: ${self.portfolio_account.cash:.2f}")
 
     def on_market_event(self, event: MarketEvent):
@@ -61,8 +64,16 @@ class PortfolioManager:
         current_price = self._latest_market_prices[event.symbol]
         current_holding = self.portfolio_account.get_holding_quantity(event.symbol)
 
+        cash_available_for_new_order = self.portfolio_account.cash
+        for order_id, order in self._pending_orders.items():
+            if order.direction == Signal.BUY:
+                deduction = order.quantity * order.price * (Decimal("1") + self.portfolio_account.transaction_cost_percent)
+                cash_available_for_new_order -= deduction
+
+        cash_available_for_new_order = max(Decimal("0"), cash_available_for_new_order)
+
         if event.direction == Signal.BUY:
-            self._buy_on_signal_event(event, current_holding, current_price)
+            self._buy_on_signal_event(event, current_holding, current_price, cash_available_for_new_order)
         elif event.direction == Signal.SELL:
             self._sell_on_signal_event(event, current_holding, current_price)
 
@@ -70,14 +81,15 @@ class PortfolioManager:
         self, 
         event: SignalEvent,
         current_holding: Decimal,
-        current_price: Decimal
+        current_price: Decimal,
+        cash_available_for_new_order: Decimal
     ):
         if current_holding == Decimal("0"):
             calculated_quantity = self.position_sizing_method.calculate_quantity(
                 symbol=event.symbol,
                 direction=event.direction,
                 current_price=current_price,
-                portfolio_cash=self.portfolio_account.cash,
+                portfolio_cash=cash_available_for_new_order,
                 portfolio_holdings=self.portfolio_account.holdings,
                 portfolio_current_value=self.portfolio_account.get_total_value(self._latest_market_prices), # Pass current total value
                 latest_market_prices=self._latest_market_prices 
@@ -87,8 +99,11 @@ class PortfolioManager:
                 logging.warning(f"Calculated quantity for {event.symbol} is {calculated_quantity}. Skipping BUY signal on {event.timestamp.date()}.")
                 return
 
-            if self.portfolio_account.can_buy(current_price, calculated_quantity):
+            estimated_cost = (calculated_quantity * current_price) * (Decimal("1") + self.portfolio_account.transaction_cost_percent)
+
+            if cash_available_for_new_order >= estimated_cost:
                 order_event = OrderEvent(
+                    order_id=str(uuid.uuid4()),
                     symbol=event.symbol,
                     timestamp=event.timestamp,
                     direction=Signal.BUY,
@@ -97,6 +112,7 @@ class PortfolioManager:
                     price=current_price
                 )
                 self.event_queue.put(order_event)
+                self._pending_orders[order_event.order_id] = order_event
                 logging.info(f"PortfolioManager placed BUY order for {calculated_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}")
             else:
                 logging.warning(f"Not enough cash to BUY {calculated_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}. Current cash: ${self.portfolio_account.cash:.2f}")
@@ -117,6 +133,7 @@ class PortfolioManager:
         quantity_to_sell = current_holding
 
         order_event = OrderEvent(
+            order_id=str(uuid.uuid4()),
             symbol=event.symbol,
             timestamp=event.timestamp,
             direction=Signal.SELL,
@@ -125,6 +142,7 @@ class PortfolioManager:
             price=current_price
         )
         self.event_queue.put(order_event)
+        self._pending_orders[order_event.order_id] = order_event
         logging.info(f"PortfolioManager placed SELL order for {quantity_to_sell} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}")
 
     def on_fill_event(self, event: FillEvent):
@@ -132,6 +150,11 @@ class PortfolioManager:
         Processes a FillEvent from the execution handler. Updates the actual
         cash and holdings of the portfolio.
         """
+        if event.order_id in self._pending_orders:
+            del self._pending_orders[event.order_id]
+        else:
+            logging.warning(f"Received FillEvent for unknown or already processed order ID: {event.order_id}. This might indicate a logic error or out-of-order event processing.")
+
         if event.successful:
             if event.direction == Signal.BUY:
                 self.portfolio_account.buy(
@@ -156,7 +179,8 @@ class PortfolioManager:
                 "quantity": event.quantity,
                 "price": event.fill_price, 
                 "commission": event.commission,
-                "successful": event.successful
+                "successful": event.successful,
+                "order_id": event.order_id
             })
             logging.info(f"Portfolio updated: {event.direction} {event.quantity} of {event.symbol} at {event.fill_price:.2f}. New cash: ${self.portfolio_account.cash:.2f}")
         else:
@@ -215,10 +239,13 @@ class PortfolioManager:
         cash_per_symbol = initial_cash_total / Decimal(str(len(self.symbols)))
 
         for symbol in available_symbols_for_benchmark:
-            quantity = (cash_per_symbol / current_market_prices[symbol]).quantize(Decimal("1"))
-            self._benchmark_holdings[symbol] = quantity
-            logging.info(f"Benchmark initialized: Bought {quantity} of {symbol} at {current_market_prices[symbol]:.2f}")
-        
+            if current_market_prices[symbol] > Decimal("0"):
+                quantity = (cash_per_symbol / current_market_prices[symbol]).quantize(Decimal("1"))
+                self._benchmark_holdings[symbol] = quantity
+                logging.info(f"Benchmark initialized: Bought {quantity} of {symbol} at {current_market_prices[symbol]:.2f}")
+            else:
+                 logging.warning(f"Cannot initialize benchmark for {symbol}: current market price is zero or negative.")
+       
         self._benchmark_initialized = True 
 
     
