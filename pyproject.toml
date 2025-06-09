@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alpheast"
+version = "0.1.0"
+authors = [
+    { name="Tudor Andrei Orban", email="tudoraorban@protonmail.com" },
+]
+description = "An event-driven backtesting engine for trading strategies."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "requests",
+    "pandas",
+    "matplotlib",
+
+    "SQLAlchemy",
+    "alembic",
+    "psycopg2-binary",
+
+    "pytest",
+    "pytest-mock",
+]
+
+[project.urls]
+Homepage = "https://github.com/TudorOrban/AlphEast"
+Issues = "https://github.com/TudorOrban/AlphEast/issues"
