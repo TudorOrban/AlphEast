@@ -1,7 +1,8 @@
 from decimal import Decimal
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
+from src.backtesting_engines.event_driven_engine.backtest_results import BacktestResults
 from src.backtesting_engines.event_driven_engine.event_queue import EventQueue
 from src.backtesting_engines.event_driven_engine.handlers.database_data_handler import DatabaseDataHandler
 from src.backtesting_engines.event_driven_engine.handlers.simulated_execution_handler import SimulatedExecutionHandler
@@ -9,7 +10,7 @@ from src.backtesting_engines.event_driven_engine.models.input_data import PriceB
 from src.backtesting_engines.event_driven_engine.portfolio.portfolio_manager import PortfolioManager
 from src.backtesting_engines.event_driven_engine.strategy.base_strategy import BaseStrategy
 from src.backtesting_engines.event_driven_engine.position_sizing.base_position_sizing import BasePositionSizing
-from src.backtesting_engines.event_driven_engine.backtest_config import BacktestConfig
+from src.backtesting_engines.event_driven_engine.models.backtest_config import BacktestConfig
 from src.backtesting_engines.event_driven_engine.models.event_enums import EventType
 from src.data.sources.financial_data_client import FinancialDataClient
 from src.shared.metrics import calculate_performance_metrics
@@ -67,7 +68,7 @@ class BacktestingEngine:
 
         logging.info("New Backtester initialized with config")
         
-    def run(self):
+    def run(self) -> Optional[BacktestResults]:
         """
         Runs the main event loop of the backtesting engine
         """
@@ -90,7 +91,7 @@ class BacktestingEngine:
 
         if not daily_values:
             logging.error("No daily values recorded, skipping Summary.")
-            return
+            raise Exception("Failed: No daily values.")
 
         performance_metrics = calculate_performance_metrics(
             daily_values=daily_values,
@@ -98,26 +99,19 @@ class BacktestingEngine:
             benchmark_daily_values=benchmark_daily_values
         )
 
-        self._print_metrics(
-            final_portfolio_summary, 
-            trade_log, 
-            performance_metrics
-        )
-
-        plot_title = f"Event-Driven Portfolio Equity Curve: Multiple Symbols with SMA Crossover"
-        self.plotter.plot_equity_curve(
+        results = BacktestResults(
+            performance_metrics=performance_metrics,
             daily_values=daily_values,
-            benchmark_daily_values=benchmark_daily_values, 
-            title=plot_title
+            benchmark_daily_values=benchmark_daily_values,
+            trade_log=trade_log,
+            final_portfolio_summary=final_portfolio_summary,
+            start_date=self.config.start_date,
+            end_date=self.config.end_date,
+            initial_cash=self.config.initial_cash
         )
 
-        return {
-            "performance_metrics": performance_metrics,
-            "daily_values": daily_values,
-            "benchmark_daily_values": benchmark_daily_values,
-            "trade_log": trade_log,
-            "final_portfolio_summary": final_portfolio_summary
-        }
+        logging.info("--- Backtest Finished ---")
+        return results
 
     def _process_next_event(self):
         event = self.event_queue.get()
@@ -148,36 +142,3 @@ class BacktestingEngine:
 
         else:
             logging.warning(f"Unknown event type received: {event.type}")
-
-    def _print_metrics(
-        self,
-        final_portfolio_summary: Dict[str, Any],
-        trade_log: List[Dict[str, Any]],
-        performance_metrics: Dict[str, Any]
-    ):
-        print("\n--- Event-Driven Backtest Summary ---")
-        print(f"Initial Cash: ${self.config.initial_cash:.2f}")
-        print(f"Final Cash: ${final_portfolio_summary["cash"]:.2f}")
-        print(f"Final Holdings: {final_portfolio_summary["holdings"]}")
-        print(f"Total Trades: {len(trade_log)}")
-        
-        # Print Strategy Performance
-        if "strategy" in performance_metrics and "error" not in performance_metrics["strategy"]:
-            print("\n--- Performance Metrics (Strategy) ---")
-            for metric, value in performance_metrics["strategy"].items():
-                print(f"{metric.replace('_', ' ').title()}: {value}")
-        elif "strategy" in performance_metrics and "error" in performance_metrics["strategy"]:
-            print(f"\n--- Strategy Performance Error ---")
-            print(performance_metrics['strategy']['error'])
-
-        # Print Benchmark Performance
-        if "benchmark" in performance_metrics and "error" not in performance_metrics["benchmark"]:
-            print("\n--- Performance Metrics (Benchmark) ---")
-            for metric, value in performance_metrics["benchmark"].items():
-                print(f"{metric.replace('_', ' ').title()}: {value}")
-        elif "benchmark" in performance_metrics and "error" in performance_metrics["benchmark"]:
-            print(f"\n--- Benchmark Performance Error ---")
-            print(performance_metrics['benchmark']['error'])
-
-        print("-----------------------------------")
-        
