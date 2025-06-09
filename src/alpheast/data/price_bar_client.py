@@ -17,5 +17,5 @@ class PriceBarClient(ABC):
     ) -> List[PriceBar]:
         """
         Abstract method to fetch price bar data for a given symbol, date range and interval.
-
         """
+        pass

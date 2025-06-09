@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Dict, List
-from examples.full.database.service import FinancialDataService
+from examples.full.clients.alpha_vantage_price_bar_client import AlphaVantagePriceBarClient
+from examples.full.config import ALPHA_VANTAGE_API_KEY
 from alpheast.models.interval import Interval
 from alpheast.models.price_bar import PriceBar
 from alpheast.engine import BacktestingEngine
@@ -27,7 +28,7 @@ def load_data() -> Dict[str, List[PriceBar]]:
 if __name__ == "__main__":
     SYMBOLS = ["AAPL", "MSFT"]
     INITIAL_CASH = 100_000.0
-    START_DATE = datetime(2020, 1, 1)
+    START_DATE = datetime(2023, 1, 1)
     END_DATE = datetime(2025, 1, 1)
     INTERVAL = Interval.DAILY
 
@@ -45,6 +46,8 @@ if __name__ == "__main__":
         transaction_cost_percent=0.001,
         slippage_percent=0.0005
     )
+
+    data_client = AlphaVantagePriceBarClient(ALPHA_VANTAGE_API_KEY)
 
     example_strategy_aapl = ExampleStrategy(symbol="AAPL")
     example_strategy_msft = ExampleStrategy(symbol="MSFT")

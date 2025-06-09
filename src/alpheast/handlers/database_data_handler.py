@@ -3,15 +3,14 @@ from datetime import date, datetime
 import logging
 from typing import Dict, List, Optional
 import pandas as pd
-from alpheast.data.financial_data_client import FinancialDataClient
+from alpheast.data.price_bar_client import PriceBarClient
 from alpheast.events.event import DailyUpdateEvent, MarketEvent
 from alpheast.events.event_queue import EventQueue
-from alpheast.handlers.data_handler import DataHandler
 from alpheast.models.interval import Interval
 from alpheast.models.price_bar import PriceBar
 
 
-class DatabaseDataHandler(DataHandler):
+class DatabaseDataHandler:
     """
     A concrete data handler that fetches price data from the database
     via DatabaseDataRepository for a specified interval.
@@ -25,14 +24,17 @@ class DatabaseDataHandler(DataHandler):
         end_date: date,
         interval: Interval,
         price_data: Dict[str, List[PriceBar]],
-        data_client: Optional[FinancialDataClient] = None
+        data_client: Optional[PriceBarClient] = None
     ):
         self.event_queue = event_queue
         self.symbols = symbols
         self.start_date = start_date
         self.end_date = end_date
         self.interval = interval
-        self.price_data = price_data
+        
+        self.price_bar_data = price_data
+        self.data_client = data_client
+        self._load_data_from_client(symbols, start_date, end_date, interval)
         
         self._all_data_df: pd.DataFrame = pd.DataFrame()
         self._unique_timestamps: List[datetime] = []
@@ -43,7 +45,7 @@ class DatabaseDataHandler(DataHandler):
             f"DatabaseDataHandler initialized for symbols {symbols} from {start_date} to {end_date} "
             f"with interval {interval.value}"
         )
-        self._load_all_data()
+        self._preprocess_data()
 
     def stream_next_market_event(self):
         """
@@ -93,13 +95,13 @@ class DatabaseDataHandler(DataHandler):
     def continue_backtest(self) -> bool:
         return self._current_timestamp_idx < len(self._unique_timestamps)
 
-    def _load_all_data(self):
+    def _preprocess_data(self):
         """
         Loads data for all specified symbols and interval, and sorts it by timestamp and then by symbol.
         """
         all_rows_data = []
         for symbol in self.symbols:
-            price_bars = self.price_data[symbol]
+            price_bars = self.price_bar_data[symbol]
 
             for pb in price_bars:
                 all_rows_data.append({
@@ -121,3 +123,21 @@ class DatabaseDataHandler(DataHandler):
 
         self._unique_timestamps = sorted(self._all_data_df["timestamp"].unique().tolist())
         logging.info(f"Loaded data for {len(self.symbols)} symbols across {len(self._unique_timestamps)} unique timestamps.")
+
+    def _load_data_from_client(
+        self, 
+        symbols: List[str], 
+        start_date: date, 
+        end_date: date,
+        interval: Interval
+    ):
+        if self.data_client is None:
+            return
+
+        all_data: Dict[str, List[PriceBar]] = {}
+        
+        for symbol in symbols:
+            symbol_data = self.data_client.get_price_bar_data(symbol, start_date, end_date, interval)
+            all_data[symbol] = symbol_data
+
+        self.price_bar_data = all_data

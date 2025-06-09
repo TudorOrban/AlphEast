@@ -4,7 +4,7 @@ from typing import Generator
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from config import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
+from examples.full.config import DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER
 from examples.full.database.base_model import Base
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

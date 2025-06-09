@@ -2,7 +2,7 @@ from decimal import Decimal
 import logging
 from typing import Dict, List, Optional
 
-from alpheast.data.financial_data_client import FinancialDataClient
+from alpheast.data.price_bar_client import PriceBarClient
 from alpheast.models.backtest_results import BacktestResults
 from alpheast.events.event_queue import EventQueue
 from alpheast.handlers.database_data_handler import DatabaseDataHandler
@@ -25,7 +25,7 @@ class BacktestingEngine:
         self,
         config: BacktestConfig,
         price_data: Dict[str, List[PriceBar]], # Symbol -> its price data
-        data_client: Optional[FinancialDataClient],
+        data_client: Optional[PriceBarClient],
         strategies: List[BaseStrategy],
         position_sizing_method: Optional[BasePositionSizing] = None
     ):
