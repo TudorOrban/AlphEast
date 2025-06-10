@@ -9,7 +9,7 @@ from alpheast.models.backtest_results import BacktestResults
 from alpheast.events.event_queue import EventQueue
 from alpheast.handlers.data_handler import DataHandler
 from alpheast.handlers.simulated_execution_handler import SimulatedExecutionHandler
-from alpheast.config.backtest_config import BacktestConfig, BacktestingOptions
+from alpheast.config.backtest_config import BacktestingOptions
 from alpheast.events.event_enums import EventType
 from alpheast.portfolio.portfolio_manager import PortfolioManager
 from alpheast.shared.utils.project_root_finder import find_project_root

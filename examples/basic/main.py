@@ -38,5 +38,3 @@ if __name__ == "__main__":
     if results:
         results.print_summary()
         results.plot_equity_curve()
-
-    
