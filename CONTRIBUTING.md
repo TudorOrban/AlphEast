@@ -8,11 +8,20 @@ At AlphEast we believe in the value of the open-source, community-driven approac
 
 ## Get started developing
 To work on AlphEast, you'll need to install a newer version of Python. After installation, open a terminal in the root of the repository and create a virtual environment:
-`python -m venv venv`, `source venv/bin/activate`
+```bash
+python -m venv venv
+```
+```bash
+source venv/bin/activate
+```
 Then run:
-`pip install -e .`
+```bash
+pip install -e .
+```
 This will package the library. You can then run any example project with:
-`python examples/full/main.py` 
+```bash
+python examples/full/main.py
+``` 
 Create your own example project to experiment with the library.
 
 ## Style guides
