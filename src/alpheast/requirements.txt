@@ -1,0 +1,8 @@
+requests
+pandas
+matplotlib
+
+psycopg2-binary
+
+pytest
+pytest-mock
