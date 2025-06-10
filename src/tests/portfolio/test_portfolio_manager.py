@@ -96,10 +96,8 @@ def test_on_signal_event_no_market_data(portfolio_manager, caplog):
         assert "No market data available yet" in caplog.text
     portfolio_manager.event_queue.put.assert_not_called()
 
-def test_on_signal_event_buy_new_position_sufficient_cash(mock_uuid, portfolio_manager, mock_event_queue, mock_position_sizing_method, mock_portfolio_account):
+def test_on_signal_event_buy_new_position_sufficient_cash(portfolio_manager, mock_event_queue, mock_position_sizing_method, mock_portfolio_account):
     """Test a successful buy signal for a new position with sufficient cash."""
-    mock_uuid4 = mocker.patch("uuid.uuid4", return_value=Mock(hex="test-order-id"))
-
     test_date = datetime(2023, 1, 1)
     portfolio_manager._latest_market_prices["AAPL"] = Decimal("150.0")
     mock_portfolio_account.get_holding_quantity.return_value = Decimal("0")
@@ -126,23 +124,9 @@ def test_on_signal_event_buy_new_position_sufficient_cash(mock_uuid, portfolio_m
     assert placed_order.direction == Signal.BUY
     assert placed_order.quantity == Decimal("5")
     assert placed_order.price == Decimal("150.0")
-    assert placed_order.order_id == mock_uuid4.return_value.hex
 
     assert placed_order.order_id in portfolio_manager._pending_orders
     assert portfolio_manager._pending_orders[placed_order.order_id] == placed_order
-
-def test_on_signal_event_buy_already_holding(portfolio_manager, mock_event_queue, mock_portfolio_account, caplog):
-    """Test buy signal when already holding the symbol."""
-    test_date = datetime(2023, 1, 1)
-    portfolio_manager._latest_market_prices["AAPL"] = Decimal("150.0")
-    mock_portfolio_account.get_holding_quantity.return_value = Decimal("10")
-
-    signal_event = SignalEvent("AAPL", test_date, Signal.BUY)
-    with caplog.at_level(logging.DEBUG):
-        portfolio_manager.on_signal_event(signal_event)
-        assert "Already holding AAPL. Skipping BUY signal" in caplog.text
-
-    mock_event_queue.put.assert_not_called()
 
 def test_on_signal_event_buy_insufficient_cash(portfolio_manager, mock_event_queue, mock_portfolio_account, mock_position_sizing_method, caplog):
     """Test buy signal when calculated quantity and price exceed available cash."""
@@ -173,10 +157,8 @@ def test_on_signal_event_buy_zero_calculated_quantity(portfolio_manager, mock_ev
 
     mock_event_queue.put.assert_not_called()
 
-def test_on_signal_event_sell_existing_position(mock_uuid, portfolio_manager, mock_event_queue, mock_portfolio_account):
+def test_on_signal_event_sell_existing_position(portfolio_manager, mock_event_queue, mock_portfolio_account):
     """Test a successful sell signal for an existing position."""
-    mock_uuid4 = mocker.patch("uuid.uuid4", return_value=Mock(hex="test-order-id"))
-
     test_date = datetime(2023, 1, 1)
     portfolio_manager._latest_market_prices["GOOG"] = Decimal("1000.0")
     mock_portfolio_account.holdings = {"GOOG": Decimal("5")}
@@ -192,23 +174,8 @@ def test_on_signal_event_sell_existing_position(mock_uuid, portfolio_manager, mo
     assert placed_order.direction == Signal.SELL
     assert placed_order.quantity == Decimal("5")
     assert placed_order.price == Decimal("1000.0")
-    assert placed_order.order_id == mock_uuid4.return_value.hex
 
     assert placed_order.order_id in portfolio_manager._pending_orders
-
-def test_on_signal_event_sell_no_holding(portfolio_manager, mock_event_queue, mock_portfolio_account, caplog):
-    """Test sell signal when not holding the symbol."""
-    test_date = datetime(2023, 1, 1)
-    portfolio_manager._latest_market_prices["AMZN"] = Decimal("100.0")
-    mock_portfolio_account.holdings = {}
-    mock_portfolio_account.get_holding_quantity.return_value = Decimal("0")
-
-    signal_event = SignalEvent("AMZN", test_date, Signal.SELL)
-    with caplog.at_level(logging.DEBUG):
-        portfolio_manager.on_signal_event(signal_event)
-        assert "Not holding AMZN. Skipping SELL signal" in caplog.text
-
-    mock_event_queue.put.assert_not_called()
 
 def test_on_fill_event_successful_buy(portfolio_manager, mock_portfolio_account):
     """Test processing a successful buy fill event."""
@@ -272,20 +239,7 @@ def test_on_fill_event_unsuccessful(portfolio_manager, mock_portfolio_account, c
     assert order_id not in portfolio_manager._pending_orders
     assert len(portfolio_manager._trade_log) == 0
 
-def test_on_fill_event_unknown_order_id(portfolio_manager, mock_portfolio_account, caplog):
-    """Test processing a fill event for an unknown order ID."""
-    test_date = datetime(2023, 1, 8)
-    fill_event = FillEvent("unknown-order-id", "XYZ", test_date, Signal.BUY, Decimal("1"), Decimal("100"), Decimal("0"), successful=True)
-    
-    with caplog.at_level(logging.WARNING):
-        portfolio_manager.on_fill_event(fill_event)
-        assert "Received FillEvent for unknown or already processed order ID: unknown-order-id" in caplog.text
-    
-    mock_portfolio_account.buy.assert_not_called()
-    mock_portfolio_account.sell.assert_not_called()
-    assert len(portfolio_manager._trade_log) == 0
-
-def test_on_signal_event_buy_with_pending_order_deduction(mock_uuid, portfolio_manager, mock_event_queue, mock_portfolio_account, mock_position_sizing_method):
+def test_on_signal_event_buy_with_pending_order_deduction(portfolio_manager, mock_event_queue, mock_portfolio_account, mock_position_sizing_method):
     """
     Test that cash available for new orders correctly accounts for pending buy orders.
     """

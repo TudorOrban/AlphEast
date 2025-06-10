@@ -3,6 +3,8 @@ from enum import Enum
 
 
 class Interval(Enum):
+    MONTHLY = "1m"
+    WEEKLY = "1w"
     DAILY = "1d"
     HOURLY = "1h"
     MINUTE_30 = "30m"

@@ -54,8 +54,9 @@ class ConfigLoader:
                 except KeyError:
                     raise ValueError(f"Invalid interval: '{interval_str}'. Must be one of: {[e.name for e in Interval]}")
             initial_cash = float(data["initial_cash"])
-            transaction_cost_percent = float(data["transaction_cost_percent"]) if data["transaction_cost_percent"] is not None else None
-            slippage_percent = float(data["slippage_percent"]) if data["slippage_percent"] is not None else None
+            initial_cash = float(data["initial_cash"])
+            transaction_cost_percent = float(data.get("transaction_cost_percent")) if data.get("transaction_cost_percent") is not None else None
+            slippage_percent = float(data.get("slippage_percent")) if data.get("slippage_percent") is not None else None
 
             return BacktestingOptions(
                 symbols=symbols,
