@@ -40,12 +40,30 @@ class PriceDataRepository:
                 logging.error(f"Error saving price bars: {e}")
                 raise
 
+    def get_multiple_symbols_data(
+        self,
+        symbols: List[str],
+        start_date: Optional[date] = None, 
+        end_date: Optional[date] = None,
+        interval: Interval = Interval.DAILY
+    ) -> Dict[str, List[PriceBar]]:
+        price_data: Dict[str, List[PriceBar]] = {}
+        for symbol in symbols:
+            price_bars: List[PriceBar] = self.get_price_data(
+                symbol=symbol,
+                start_date=start_date,
+                end_date=end_date,
+                interval=interval
+            )
+            price_data[symbol] = price_bars
+        return price_data
+
     def get_price_data(
-            self, 
-            symbol: str, 
-            start_date: Optional[date] = None, 
-            end_date: Optional[date] = None,
-            interval: Interval = Interval.DAILY
+        self, 
+        symbol: str, 
+        start_date: Optional[date] = None, 
+        end_date: Optional[date] = None,
+        interval: Interval = Interval.DAILY
     ) -> List[PriceBar]:
         """
         Retrieves price data for a given symbol, date range, and interval.

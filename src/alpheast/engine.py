@@ -1,14 +1,15 @@
 from decimal import Decimal
 import logging
-from typing import Dict, List, Optional
+from typing import List, Optional
 
+from alpheast.config.data_source import DataSource
 from alpheast.data.price_bar_client import PriceBarClient
 from alpheast.models.backtest_results import BacktestResults
 from alpheast.events.event_queue import EventQueue
-from alpheast.handlers.database_data_handler import DatabaseDataHandler
+from alpheast.handlers.database_data_handler import StandardDataHandler
 from alpheast.handlers.simulated_execution_handler import SimulatedExecutionHandler
 from alpheast.models.price_bar import PriceBar
-from alpheast.models.backtest_config import BacktestConfig
+from alpheast.config.backtest_config import BacktestConfig
 from alpheast.events.event_enums import EventType
 from alpheast.portfolio.portfolio_manager import PortfolioManager
 from alpheast.strategy.base_strategy import BaseStrategy
@@ -24,8 +25,7 @@ class BacktestingEngine:
     def __init__(
         self,
         config: BacktestConfig,
-        price_data: Dict[str, List[PriceBar]], # Symbol -> its price data
-        data_client: Optional[PriceBarClient],
+        data_source: DataSource,
         strategies: List[BaseStrategy],
         position_sizing_method: Optional[BasePositionSizing] = None
     ):
@@ -35,14 +35,13 @@ class BacktestingEngine:
         decimal_transaction_cost = Decimal(str(self.config.transaction_cost_percent))
         decimal_slippage_percent = Decimal(str(self.config.slippage_percent))
 
-        self.data_handler = DatabaseDataHandler(
+        self.data_handler = StandardDataHandler(
             event_queue=self.event_queue,
             symbols=self.config.symbols,
-            price_data=price_data,
-            data_client=data_client,
             start_date=self.config.start_date,
             end_date=self.config.end_date,    
-            interval=self.config.interval   
+            interval=self.config.interval,
+            data_source=data_source
         )
 
         self.strategies: List[BaseStrategy] = []

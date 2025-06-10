@@ -1,29 +1,14 @@
 from datetime import datetime
-from typing import Dict, List
+from alpheast.config.data_source import DataSource, DataSourceType
+from alpheast.models.interval import Interval
+from alpheast.engine import BacktestingEngine
+from alpheast.config.backtest_config import BacktestConfig
 from examples.full.clients.alpha_vantage_price_bar_client import AlphaVantagePriceBarClient
 from examples.full.config import ALPHA_VANTAGE_API_KEY
-from alpheast.models.interval import Interval
-from alpheast.models.price_bar import PriceBar
-from alpheast.engine import BacktestingEngine
-from alpheast.models.backtest_config import BacktestConfig
 from examples.full.database.repository import PriceDataRepository
 from examples.full.strategies.example_strategy import ExampleStrategy
 from examples.full.strategies.example_position_sizing import ExamplePositionSizing
 
-def load_data() -> Dict[str, List[PriceBar]]:
-    repository = PriceDataRepository()
-
-    price_data: Dict[str, List[PriceBar]] = {}
-    for symbol in SYMBOLS:
-        price_bars: List[PriceBar] = repository.get_price_data(
-            symbol=symbol,
-            start_date=START_DATE,
-            end_date=END_DATE,
-            interval=INTERVAL
-        )
-        price_data[symbol] = price_bars
-
-    return price_data
 
 if __name__ == "__main__":
     SYMBOLS = ["AAPL", "MSFT"]
@@ -31,11 +16,12 @@ if __name__ == "__main__":
     START_DATE = datetime(2023, 1, 1)
     END_DATE = datetime(2025, 1, 1)
     INTERVAL = Interval.DAILY
+    TRANSACTION_COST_PERCENT = 0.001
+    SLIPPAGE_PERCENT = 0.0005
+    POSITION_SIZING = 0.5
 
-    # service = FinancialDataService(ALPHA_VANTAGE_API_KEY)
-    # service.fetch_and_save_price_data("MSFT", START_DATE, END_DATE, INTERVAL)
-
-    price_data = load_data()
+    repository = PriceDataRepository()
+    price_bar_data = repository.get_multiple_symbols_data(SYMBOLS, START_DATE, END_DATE, INTERVAL)
     
     config = BacktestConfig(
         symbols=SYMBOLS,
@@ -43,22 +29,22 @@ if __name__ == "__main__":
         end_date=END_DATE.date(),
         interval=INTERVAL,
         initial_cash=INITIAL_CASH,
-        transaction_cost_percent=0.001,
-        slippage_percent=0.0005
+        transaction_cost_percent=TRANSACTION_COST_PERCENT,
+        slippage_percent=SLIPPAGE_PERCENT
     )
 
-    data_client = AlphaVantagePriceBarClient(ALPHA_VANTAGE_API_KEY)
+    # data_client = AlphaVantagePriceBarClient(ALPHA_VANTAGE_API_KEY)
 
-    example_strategy_aapl = ExampleStrategy(symbol="AAPL")
-    example_strategy_msft = ExampleStrategy(symbol="MSFT")
-    example_position_sizing = ExamplePositionSizing(0.5)
+    data_source = DataSource(
+        type=DataSourceType.DIRECT,
+        price_bar_data=price_bar_data,
+    )
 
     engine = BacktestingEngine(
         config=config,
-        price_data=price_data,
-        data_client=None,
-        strategies=[example_strategy_aapl, example_strategy_msft],
-        position_sizing_method=example_position_sizing
+        data_source=data_source,
+        strategies=[ExampleStrategy(symbol=symbol) for symbol in SYMBOLS],
+        position_sizing_method=ExamplePositionSizing(POSITION_SIZING)
     )
     
     results = engine.run()

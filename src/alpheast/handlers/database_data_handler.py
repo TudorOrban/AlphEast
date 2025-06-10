@@ -1,8 +1,10 @@
 
 from datetime import date, datetime
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
 import pandas as pd
+from alpheast.config.data_source import DataSource, DataSourceType, SupportedProvider
+from alpheast.data.alpha_vantage_price_bar_client import AlphaVantageStdPriceBarClient
 from alpheast.data.price_bar_client import PriceBarClient
 from alpheast.events.event import DailyUpdateEvent, MarketEvent
 from alpheast.events.event_queue import EventQueue
@@ -10,7 +12,7 @@ from alpheast.models.interval import Interval
 from alpheast.models.price_bar import PriceBar
 
 
-class DatabaseDataHandler:
+class StandardDataHandler:
     """
     A concrete data handler that fetches price data from the database
     via DatabaseDataRepository for a specified interval.
@@ -23,8 +25,7 @@ class DatabaseDataHandler:
         start_date: date, 
         end_date: date,
         interval: Interval,
-        price_data: Dict[str, List[PriceBar]],
-        data_client: Optional[PriceBarClient] = None
+        data_source: DataSource,
     ):
         self.event_queue = event_queue
         self.symbols = symbols
@@ -32,9 +33,9 @@ class DatabaseDataHandler:
         self.end_date = end_date
         self.interval = interval
         
-        self.price_bar_data = price_data
-        self.data_client = data_client
-        self._load_data_from_client(symbols, start_date, end_date, interval)
+        self.data_source = data_source
+        self.price_bar_data = data_source.price_bar_data
+        self._load_data_from_data_source()
         
         self._all_data_df: pd.DataFrame = pd.DataFrame()
         self._unique_timestamps: List[datetime] = []
@@ -124,20 +125,38 @@ class DatabaseDataHandler:
         self._unique_timestamps = sorted(self._all_data_df["timestamp"].unique().tolist())
         logging.info(f"Loaded data for {len(self.symbols)} symbols across {len(self._unique_timestamps)} unique timestamps.")
 
-    def _load_data_from_client(
-        self, 
-        symbols: List[str], 
-        start_date: date, 
-        end_date: date,
-        interval: Interval
-    ):
-        if self.data_client is None:
-            return
+    def _load_data_from_data_source(self):
+        price_bar_data: Dict[str, List[PriceBar]] = {}
+        type = self.data_source.type
 
-        all_data: Dict[str, List[PriceBar]] = {}
-        
-        for symbol in symbols:
-            symbol_data = self.data_client.get_price_bar_data(symbol, start_date, end_date, interval)
-            all_data[symbol] = symbol_data
+        if type == DataSourceType.DIRECT:
+            price_bar_data = self.data_source.price_bar_data
+            if price_bar_data is None:
+                raise ValueError("The provided price bar data is None, stopping backtest.")
+        elif type == DataSourceType.CUSTOM_CLIENT:
+            if self.data_source.custom_client is None:
+                raise ValueError("The provided Custom Data Client is None, stopping backtest.")
+            
+            price_bar_data = self._load_all_symbols(self.data_source.custom_client)
+        elif type == DataSourceType.STD_CLIENT:
+            if self.data_source.api_key is None:
+                raise ValueError("The provided API Key is None, stopping backtest.")
+            if self.data_source.provider is None:
+                raise ValueError("The provided Data Provider is None, stopping backtest.")
+            
+            match self.data_source.provider:
+                case SupportedProvider.ALPHA_VANTAGE:
+                    data_client = AlphaVantageStdPriceBarClient(self.data_source.api_key)
+                case _:
+                    raise ValueError("The provided Data Provider is not yet supported, stopping backtest.")
 
-        self.price_bar_data = all_data
+            price_bar_data = self._load_all_symbols(data_client)
+            
+    def _load_all_symbols(self, client: PriceBarClient):
+        price_bar_data: Dict[str, List[PriceBar]] = {}
+
+        for symbol in self.symbols:
+            symbol_data = client.get_price_bar_data(symbol, self.start_date, self.end_date, self.interval)
+            price_bar_data[symbol] = symbol_data
+
+        return price_bar_data
