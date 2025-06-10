@@ -1,0 +1,9 @@
+{
+    "symbols": ["AAPL", "MSFT"],
+    "start_date": "2023-01-01",
+    "end_date": "2025-01-01",
+    "interval": "DAILY",
+    "initial_cash": 50000.0,
+    "transaction_cost_percent": 0.003,
+    "slippage_percent": 0.0005
+}

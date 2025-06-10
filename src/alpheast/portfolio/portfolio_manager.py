@@ -4,13 +4,13 @@ import logging
 from typing import Any, Dict, List, Optional
 import uuid
 from alpheast.portfolio.benchmark_calculator import BenchmarkCalculator
-from alpheast.position_sizing.examples.fixed_allocation_sizing import FixedAllocationSizing
 from alpheast.position_sizing.base_position_sizing import BasePositionSizing
 from alpheast.events.event_queue import EventQueue
 from alpheast.events.event_enums import OrderType
 from alpheast.events.event import DailyUpdateEvent, FillEvent, MarketEvent, OrderEvent, SignalEvent
 from alpheast.models.signal import Signal
-from alpheast.shared.portfolio import Portfolio
+from alpheast.portfolio.portfolio import Portfolio
+from alpheast.position_sizing.common.fixed_allocation_sizing import FixedAllocationSizing
 
 
 class PortfolioManager:
@@ -22,10 +22,10 @@ class PortfolioManager:
     def __init__(
         self,
         event_queue: EventQueue,
-        initial_cash: float = 100000.0,
+        symbols: List[str] = [],
+        initial_cash: float = 100_000.0,
         transaction_cost_percent: Decimal = Decimal("0.001"),
         position_sizing_method: Optional[BasePositionSizing] = None,
-        symbols: List[str] = []
     ):
         self.event_queue = event_queue
         self.portfolio_account = Portfolio(initial_cash, transaction_cost_percent)

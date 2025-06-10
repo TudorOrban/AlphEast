@@ -1,41 +1,40 @@
 from decimal import Decimal
 import logging
+import os
 from typing import List, Optional
 
+from alpheast.config.config_loader import ConfigLoader
 from alpheast.config.data_source import DataSource
-from alpheast.data.price_bar_client import PriceBarClient
 from alpheast.models.backtest_results import BacktestResults
 from alpheast.events.event_queue import EventQueue
-from alpheast.handlers.database_data_handler import StandardDataHandler
+from alpheast.handlers.data_handler import DataHandler
 from alpheast.handlers.simulated_execution_handler import SimulatedExecutionHandler
-from alpheast.models.price_bar import PriceBar
-from alpheast.config.backtest_config import BacktestConfig
+from alpheast.config.backtest_config import BacktestConfig, BacktestingOptions
 from alpheast.events.event_enums import EventType
 from alpheast.portfolio.portfolio_manager import PortfolioManager
+from alpheast.shared.utils.project_root_finder import find_project_root
 from alpheast.strategy.base_strategy import BaseStrategy
 from alpheast.position_sizing.base_position_sizing import BasePositionSizing
 from alpheast.shared.metrics import calculate_performance_metrics
-from alpheast.shared.plotting import PerformancePlotter
 
 class BacktestingEngine:
     """
     Orchestrates the event-driven backtesting process.
-    Initializes all components and runs the main event loop.
+    Initializes all main components:
+    EventQueue, DataHandler, Strategies, PortfolioManager, SimulatedExecutionHandler 
+    and runs the main event loop.
     """
     def __init__(
         self,
-        config: BacktestConfig,
+        options: BacktestingOptions,
         data_source: DataSource,
         strategies: List[BaseStrategy],
         position_sizing_method: Optional[BasePositionSizing] = None
     ):
-        self.config = config
+        self._initialize_config(options)
         self.event_queue = EventQueue()
 
-        decimal_transaction_cost = Decimal(str(self.config.transaction_cost_percent))
-        decimal_slippage_percent = Decimal(str(self.config.slippage_percent))
-
-        self.data_handler = StandardDataHandler(
+        self.data_handler = DataHandler(
             event_queue=self.event_queue,
             symbols=self.config.symbols,
             start_date=self.config.start_date,
@@ -49,12 +48,15 @@ class BacktestingEngine:
             strategy_instance.set_event_queue(self.event_queue)
             self.strategies.append(strategy_instance)
         
+        decimal_transaction_cost = Decimal(str(self.config.transaction_cost_percent))
+        decimal_slippage_percent = Decimal(str(self.config.slippage_percent))
+
         self.portfolio_manager = PortfolioManager(
             event_queue=self.event_queue,
+            symbols=self.config.symbols,
             initial_cash=self.config.initial_cash,
             transaction_cost_percent=decimal_transaction_cost,
-            position_sizing_method=position_sizing_method,
-            symbols=self.config.symbols
+            position_sizing_method=position_sizing_method
         )
 
         self.execution_handler = SimulatedExecutionHandler(
@@ -63,10 +65,35 @@ class BacktestingEngine:
             slippage_percent=decimal_slippage_percent
         )
 
-        self.plotter = PerformancePlotter()
-
-        logging.info("New Backtester initialized with config")
+        logging.info("Backtesting Engine initialized.")
         
+    def _initialize_config(self, options: BacktestingOptions):
+        """
+        Initializes the backtest config by the following rules:
+        - if an alpheast_config.json is not present in project root, use passed options
+        - otherwise, load the json into a BacktestingOptions and override with any passed option values
+        In both cases, perform validation at the end. 
+        """
+        is_json_loaded = False
+
+        project_root = find_project_root()
+        json_file_path = os.path.join(project_root, "alpheast_config.json") if project_root is not None else None
+
+        if json_file_path is not None and os.path.exists(json_file_path):
+            try:
+                backtest_options = ConfigLoader.load_backtest_config_from_json(json_file_path)
+                is_json_loaded = True
+            except Exception as e:
+                logging.warning(f"Failed to load alpheast_config.json: {e}")
+
+        if is_json_loaded:
+            backtest_options.override(options)
+            self.config = backtest_options.validate()
+        else:
+            self.config = options.validate()
+
+        self.config.log()
+
     def run(self) -> Optional[BacktestResults]:
         """
         Runs the main event loop of the backtesting engine

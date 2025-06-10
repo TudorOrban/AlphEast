@@ -12,7 +12,7 @@ from alpheast.models.interval import Interval
 from alpheast.models.price_bar import PriceBar
 
 
-class StandardDataHandler:
+class DataHandler:
     """
     A concrete data handler that fetches price data from the database
     via DatabaseDataRepository for a specified interval.
@@ -34,7 +34,6 @@ class StandardDataHandler:
         self.interval = interval
         
         self.data_source = data_source
-        self.price_bar_data = data_source.price_bar_data
         self._load_data_from_data_source()
         
         self._all_data_df: pd.DataFrame = pd.DataFrame()
@@ -42,10 +41,7 @@ class StandardDataHandler:
         self._current_timestamp_idx: int = 0
         self._last_processed_date: date = None
         
-        logging.info(
-            f"DatabaseDataHandler initialized for symbols {symbols} from {start_date} to {end_date} "
-            f"with interval {interval.value}"
-        )
+        logging.info(f"DataHandler initialized for symbols {symbols} from {start_date} to {end_date} with interval {interval.value}")
         self._preprocess_data()
 
     def stream_next_market_event(self):
@@ -151,6 +147,8 @@ class StandardDataHandler:
                     raise ValueError("The provided Data Provider is not yet supported, stopping backtest.")
 
             price_bar_data = self._load_all_symbols(data_client)
+
+        self.price_bar_data = price_bar_data
             
     def _load_all_symbols(self, client: PriceBarClient):
         price_bar_data: Dict[str, List[PriceBar]] = {}

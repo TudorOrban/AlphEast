@@ -1,0 +1,12 @@
+alpheast
+
+requests
+pandas
+matplotlib
+
+SQLAlchemy
+alembic
+psycopg2-binary
+
+pytest
+pytest-mock
