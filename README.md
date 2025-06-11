@@ -51,7 +51,7 @@ if __name__ == "__main__":
     symbol = "AAPL"
     options = BacktestingOptions(
         symbols=[symbol],
-        start_date=datetime(2023, 1, 1),
+        start_date=datetime(2021, 1, 1),
         end_date=datetime(2025, 1, 1),
         interval=Interval.DAILY,
         initial_cash=100_000.0
@@ -78,7 +78,9 @@ if __name__ == "__main__":
         results.plot_equity_curve()
 ```
 
-## Performance
+![equity-curve](screenshots/equity_curve.png "Equity Curve")
+
+## ⚡️ Performance
 AlphEast is designed for efficiency and demonstrates strong scaling characteristics with both the number of symbols and the backtesting duration. Below are some example execution times measured on a standard setup:
 
 ### **Execution Time (seconds)**

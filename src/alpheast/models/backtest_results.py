@@ -4,6 +4,9 @@ from alpheast.shared.plotting import PerformancePlotter
 
 
 class BacktestResults:
+    """
+    Class containing the results of the Backtest
+    """
     def __init__(
         self,
         performance_metrics: Dict[str, Any],

@@ -8,3 +8,8 @@ psycopg2-binary
 
 pytest
 pytest-mock
+
+sphinx
+sphinx-rtd-theme
+furo
+sphinx-autodoc-typehints
