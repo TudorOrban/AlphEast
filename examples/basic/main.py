@@ -6,7 +6,8 @@ from alpheast.engine import BacktestingEngine
 from alpheast.config.backtest_config import BacktestingOptions
 from alpheast.models.interval import Interval
 from alpheast.models.price_bar import PriceBar
-from examples.basic.example_strategy import ExampleStrategy
+from alpheast.position_sizing.common.fixed_allocation_sizing import FixedAllocationSizing
+from alpheast.strategy.common.sma_crossover_strategy import SMACrossoverStrategy
 
 
 if __name__ == "__main__":
@@ -30,7 +31,8 @@ if __name__ == "__main__":
     engine = BacktestingEngine(
         options=options,
         data_source=data_source,
-        strategies=[ExampleStrategy(symbol)],
+        strategies=[SMACrossoverStrategy(symbol)],
+        position_sizing_method=FixedAllocationSizing(0.5)
     )
     
     results = engine.run()

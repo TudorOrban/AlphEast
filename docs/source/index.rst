@@ -9,7 +9,6 @@ AlphEast is an event-driven backtesting engine designed for developing and evalu
    :maxdepth: 2
    :caption: Contents:
 
-   installation
    quickstart
    api/modules
    contributing
