@@ -77,6 +77,18 @@ if __name__ == "__main__":
             "end_date": datetime(2025, 1, 1),
             "interval": Interval.DAILY
         },
+        "2_Symbols_1_Year": {
+            "symbols": ["AAPL", "MSFT"],
+            "start_date": datetime(2024, 1, 1),
+            "end_date": datetime(2025, 1, 1),
+            "interval": Interval.DAILY
+        },
+        "10_Symbols_1_Year": {
+            "symbols": ["AAPL", "MSFT", "TSLA", "NVDA", "AMZN", "GOOG", "META", "TSM", "WMT", "JPM"],
+            "start_date": datetime(2024, 1, 1),
+            "end_date": datetime(2025, 1, 1),
+            "interval": Interval.DAILY
+        },
         "1_Symbol_5_Years": {
             "symbols": ["AAPL"],
             "start_date": datetime(2020, 1, 1),
@@ -85,6 +97,12 @@ if __name__ == "__main__":
         },
         "2_Symbols_5_Years": {
             "symbols": ["AAPL", "MSFT"],
+            "start_date": datetime(2020, 1, 1),
+            "end_date": datetime(2025, 1, 1),
+            "interval": Interval.DAILY
+        },
+        "10_Symbols_5_Years": {
+            "symbols": ["AAPL", "MSFT", "TSLA", "NVDA", "AMZN", "GOOG", "META", "TSM", "WMT", "JPM"],
             "start_date": datetime(2020, 1, 1),
             "end_date": datetime(2025, 1, 1),
             "interval": Interval.DAILY

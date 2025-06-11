@@ -20,7 +20,7 @@ class PriceDataRepository:
         logging.info("PriceDataRepository initialized.")
         
 
-    def save_price_bars(self, price_bars_data: List[Dict[str, Any]]) -> None:
+    def save_price_bars(self, price_bars_data: List[PriceBar]) -> None:
         """
         Saves a list of price bar data dictionaries to the database.
         Assumes price_bars_data contains dictionaries matching PriceBarEntity columns.
@@ -29,9 +29,22 @@ class PriceDataRepository:
             logging.warning("No price bars provided to save.")
             return
         
+        data_to_insert = [
+            {
+                "time": pb.timestamp,
+                "symbol": pb.symbol,
+                "open": pb.open,
+                "high": pb.high,
+                "low": pb.low,
+                "close": pb.close,
+                "volume": pb.volume,
+            }
+            for pb in price_bars_data
+        ]
+
         with self.db_session_context() as session:
             try:
-                stmt = insert(PriceBarEntity).values(price_bars_data)
+                stmt = insert(PriceBarEntity).values(data_to_insert)
                 session.execute(stmt)
                 session.commit()
                 logging.info(f"Successfully saved {len(price_bars_data)} price bars.")

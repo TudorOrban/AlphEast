@@ -68,7 +68,7 @@ class AlphaVantagePriceBarClient(PriceBarClient):
         for date_str, values in time_series.items():
             current_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S") if " " in date_str else datetime.strptime(date_str, "%Y-%m-%d")
 
-            if start_date <= current_date.date() <= end_date:
+            if start_date <= current_date <= end_date:
                 try:
                     price_bar_data.append(PriceBar(
                         timestamp=datetime.combine(current_date, datetime.min.time()),

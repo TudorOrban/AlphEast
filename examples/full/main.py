@@ -3,20 +3,26 @@ from alpheast.config.data_source import DataSource, DataSourceType
 from alpheast.models.interval import Interval
 from alpheast.engine import BacktestingEngine
 from alpheast.config.backtest_config import BacktestingOptions
+from examples.full.config import ALPHA_VANTAGE_API_KEY
 from examples.full.database.repository import PriceDataRepository
+from examples.full.database.service import FinancialDataService
 from examples.full.strategies.example_strategy import ExampleStrategy
 from examples.full.strategies.example_position_sizing import ExamplePositionSizing
 
 
 if __name__ == "__main__":
-    SYMBOLS = ["AAPL", "MSFT"]
+    SYMBOLS = ["AAPL", "MSFT", "TSLA", "NVDA", "AMZN", "GOOG", "META", "TSM", "WMT", "JPM"]
     INITIAL_CASH = 100_000.0
-    START_DATE = datetime(2022, 1, 1)
+    START_DATE = datetime(2020, 1, 1)
     END_DATE = datetime(2025, 1, 1)
     INTERVAL = Interval.DAILY
     TRANSACTION_COST_PERCENT = 0.001
     SLIPPAGE_PERCENT = 0.0005
     POSITION_SIZING = 0.5
+
+    # service = FinancialDataService(ALPHA_VANTAGE_API_KEY)
+    # for symbol in SYMBOLS:
+    #     service.fetch_and_save_price_data(symbol, START_DATE, END_DATE, Interval.DAILY)
 
     repository = PriceDataRepository()
     price_bar_data = repository.get_multiple_symbols_data(SYMBOLS, START_DATE, END_DATE, INTERVAL)

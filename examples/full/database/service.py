@@ -14,14 +14,14 @@ class FinancialDataService:
         Fetches price data for a given symbol and interval from Alpha Vantage
         and saves it to the database.
         """
-        raw_price_data = self.alpha_vantage_client.get_price_bar_data(symbol, start_date, end_date, interval)
+        price_bar_data = self.alpha_vantage_client.get_price_bar_data(symbol, start_date, end_date, interval)
 
-        if not raw_price_data:
+        if not price_bar_data:
             logging.warning(f"No {interval.value} data retrieved for {symbol}. Nothing to save.")
             return
         
         try:
-            self.price_data_repository.save_price_bars(raw_price_data)
+            self.price_data_repository.save_price_bars(price_bar_data)
             logging.info(f"Completed fetch and save process for {symbol} ({interval.value}).")
         except Exception as e:
             logging.error(f"Failed to save {interval.value} prices for {symbol}: {e}")

@@ -78,6 +78,17 @@ if __name__ == "__main__":
         results.plot_equity_curve()
 ```
 
+## Performance
+AlphEast is designed for efficiency and demonstrates strong scaling characteristics with both the number of symbols and the backtesting duration. Below are some example execution times measured on a standard setup:
+
+### **Execution Time (seconds)**
+
+| Symbols \ Duration | 1 Year   | 5 Years  |
+| :----------------- | :------- | :------- |
+| **1** | 0.2124   | 0.9258   |
+| **2** | 0.3027   | 1.2424   |
+| **10** | 0.9525   | 3.6243   |
+
 ## Status
 In mid stages of development.
 
