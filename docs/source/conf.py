@@ -2,9 +2,9 @@
 import os
 import sys
 
-
-sys.path.insert(0, os.path.abspath("../../src"))
-
+conf_dir = os.path.dirname(__file__)
+src_path = os.path.abspath(os.path.join(conf_dir, "../../src"))
+sys.path.insert(0, src_path)
 
 project = "AlphEast"
 copyright = "2025, Tudor Andrei Orban"
