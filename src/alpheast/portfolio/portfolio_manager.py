@@ -42,6 +42,8 @@ class PortfolioManager:
         self.benchmark_calculator = BenchmarkCalculator(symbols, transaction_cost_percent, slippage_percent)
         self._pending_orders: Dict[str, OrderEvent] = {}
 
+        self.slippage_percent = slippage_percent
+
         logging.info(f"PortfolioManager initialized. Initial cash: ${self.portfolio_account.cash:.2f}")
 
     def on_market_event(self, event: MarketEvent):
@@ -63,16 +65,20 @@ class PortfolioManager:
         current_price = self._latest_market_prices[event.symbol]
         current_holding = self.portfolio_account.get_holding_quantity(event.symbol)
 
-        cash_available_for_new_order = self.portfolio_account.cash
+        cash_for_new_order_consideration = self.portfolio_account.cash
         for order_id, order in self._pending_orders.items():
             if order.direction == Signal.BUY:
-                deduction = order.quantity * order.price * (Decimal("1") + self.portfolio_account.transaction_cost_percent)
-                cash_available_for_new_order -= deduction
+                estimated_pending_fill_price = order.price * (Decimal("1") + self.slippage_percent)
+                estimated_pending_fill_price = max(Decimal("0.01"), estimated_pending_fill_price)
 
-        cash_available_for_new_order = max(Decimal("0"), cash_available_for_new_order)
+                estimated_pending_cost = (order.quantity * estimated_pending_fill_price) * (Decimal("1") + self.portfolio_account.transaction_cost_percent)
+                cash_for_new_order_consideration -= estimated_pending_cost
+                
+        cash_for_new_order_consideration = max(Decimal("0"), cash_for_new_order_consideration)
+
 
         if event.direction == Signal.BUY:
-            self._buy_on_signal_event(event, current_holding, current_price, cash_available_for_new_order)
+            self._buy_on_signal_event(event, current_holding, current_price, cash_for_new_order_consideration)
         elif event.direction == Signal.SELL:
             self._sell_on_signal_event(event, current_holding, current_price)
 
@@ -98,9 +104,12 @@ class PortfolioManager:
                 logging.warning(f"Calculated quantity for {event.symbol} is {calculated_quantity}. Skipping BUY signal on {event.timestamp.date()}.")
                 return
 
-            estimated_cost = (calculated_quantity * current_price) * (Decimal("1") + self.portfolio_account.transaction_cost_percent)
-
-            if cash_available_for_new_order >= estimated_cost:
+            estimated_fill_price_with_slippage = current_price * (Decimal("1") + self.slippage_percent)
+            estimated_fill_price_with_slippage = max(Decimal("0.01"), estimated_fill_price_with_slippage) 
+            estimated_total_cost = (calculated_quantity * estimated_fill_price_with_slippage) * \
+                                   (Decimal("1") + self.portfolio_account.transaction_cost_percent)
+            
+            if cash_available_for_new_order >= estimated_total_cost:
                 order_event = OrderEvent(
                     order_id=str(uuid.uuid4()),
                     symbol=event.symbol,

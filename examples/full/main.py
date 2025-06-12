@@ -13,14 +13,14 @@ from examples.full.strategies.example_position_sizing import ExamplePositionSizi
 
 
 if __name__ == "__main__":
-    SYMBOLS = ["MSFT", "AAPL"]
+    SYMBOLS = ["MSFT", "AAPL", "AMZN", "GOOG"]
     INITIAL_CASH = 100_000.0
     START_DATE = datetime(2020, 1, 1)
     END_DATE = datetime(2025, 1, 1)
     INTERVAL = Interval.DAILY
     TRANSACTION_COST_PERCENT = 0.001
     SLIPPAGE_PERCENT = 0.0005
-    POSITION_SIZING = 0.5
+    POSITION_SIZING = 0.6
 
     repository = PriceDataRepository()
     price_bar_data = repository.get_multiple_symbols_data(SYMBOLS, START_DATE, END_DATE, INTERVAL)
