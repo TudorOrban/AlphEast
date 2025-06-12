@@ -14,13 +14,13 @@ Understanding the Engine's Core Components
 ------------------------------------------
 To run the :py:class:`~alpheast.engine.BacktestingEngine`, you need to provide it with four key components:
 
-1.  **Backtesting Options**: A :py:class:`~alpheast.config.backtest_config.BacktestingOptions` object specifies core parameters like financial **symbols**, **start and end dates**, **bar interval**, and **initial capital**.
+1.  **Backtesting Options**: A :py:class:`~alpheast.config.backtest_config.BacktestingOptions` object specifies core parameters like financial **symbols**, **start and end dates**, **bar interval**, and **initial capital**. You can provide this in code or by placing an `alpheast_config.json` file in the root of your project.
 2.  **Data Source**: This defines how the engine gets its historical price data. Data can be provided in three ways:
 
     :Directly: Set the ``price_bar_data`` property of the :py:class:`~alpheast.config.data_source.DataSource` directly with your own pre-loaded data (a :py:class:`~alpheast.models.price_bar.PriceBar` list).
     :Custom Client: Implement a custom :py:class:`~alpheast.data.clients.base.PriceBarClient` that fetches data from your preferred data source.
     :Standard Client: Use a predefined client implementation (currently, only Alpha Vantage is supported) by providing an API key.
-    
+
 3.  **Trading Strategy**: An object that implements the :py:class:`~alpheast.strategy.base.BaseStrategy` interface. You can use one of the predefined strategies found in :py:mod:`alpheast.strategy.common` or create your own.
 4.  **Position Sizing Method**: An object that implements the :py:class:`~alpheast.position_sizing.base.BasePositionSizing` interface. Similar to strategies, you can use a predefined method from :py:mod:`alpheast.position_sizing.common` or define a custom one.
 
