@@ -2,6 +2,7 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+[![Documentation Status](https://readthedocs.org/projects/alpheast/badge/?version=latest)](https://alpheast.readthedocs.io/en/latest/?badge=latest)
 ---
 
 ## 🌟 Overview
@@ -9,6 +10,14 @@
 AlphEast is an event-driven backtesting engine designed for developing and evaluating quantitative trading strategies. While still in its early stages of development, it provides a robust, extensible framework for simulating and evaluating multi-symbol trading strategies with realistic considerations like transaction costs and slippage.
 
 Our goal is to offer a flexible tool for researchers and traders to quickly prototype and test their ideas, without getting bogged down in boilerplate.
+
+---
+
+## 📚 Documentation
+
+For complete usage instructions, API reference, detailed examples, and guides, please visit our official documentation website:
+
+https://alpheast.readthedocs.io/en/latest/
 
 ---
 
@@ -78,7 +87,7 @@ if __name__ == "__main__":
         results.plot_equity_curve()
 ```
 
-![equity-curve](screenshots/equity_curve.png "Equity Curve")
+![equity-curve](https://raw.githubusercontent.com/TudorOrban/AlphEast/main/screenshots/equity_curve.png)
 
 ## ⚡️ Performance
 AlphEast is designed for efficiency and demonstrates strong scaling characteristics with both the number of symbols and the backtesting duration. Below are some example execution times measured on a standard setup:
