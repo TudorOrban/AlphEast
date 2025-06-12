@@ -25,6 +25,7 @@ class PortfolioManager:
         symbols: List[str] = [],
         initial_cash: float = 100_000.0,
         transaction_cost_percent: Decimal = Decimal("0.001"),
+        slippage_percent: Decimal = Decimal("0.0005"),
         position_sizing_method: Optional[BasePositionSizing] = None,
     ):
         self.event_queue = event_queue
@@ -38,7 +39,7 @@ class PortfolioManager:
         self.position_sizing_method = position_sizing_method or FixedAllocationSizing(0.05)
         
         self.symbols = symbols
-        self.benchmark_calculator = BenchmarkCalculator(symbols)
+        self.benchmark_calculator = BenchmarkCalculator(symbols, transaction_cost_percent, slippage_percent)
         self._pending_orders: Dict[str, OrderEvent] = {}
 
         logging.info(f"PortfolioManager initialized. Initial cash: ${self.portfolio_account.cash:.2f}")

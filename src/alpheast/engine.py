@@ -56,6 +56,7 @@ class BacktestingEngine:
             symbols=self.config.symbols,
             initial_cash=self.config.initial_cash,
             transaction_cost_percent=decimal_transaction_cost,
+            slippage_percent=decimal_slippage_percent,
             position_sizing_method=position_sizing_method
         )
 
