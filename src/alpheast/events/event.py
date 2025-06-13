@@ -45,14 +45,12 @@ class SignalEvent(Event):
         self,
         symbol: str,
         timestamp: datetime,
-        direction: Signal,
-        strength: float = 1.0,
+        direction: Signal
     ):
         self._type = EventType.SIGNAL
         self.symbol = symbol
         self.timestamp = timestamp
         self.direction = direction
-        self.strength = strength
 
     @property
     def type(self) -> EventType:

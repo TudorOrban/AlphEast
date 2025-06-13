@@ -29,7 +29,8 @@ class BacktestingEngine:
         options: BacktestingOptions,
         data_source: DataSource,
         strategies: List[BaseStrategy],
-        position_sizing_method: Optional[BasePositionSizing] = None
+        position_sizing_method: Optional[BasePositionSizing] = None,
+        is_stepping_mode: Optional[bool] = False
     ):
         self._initialize_config(options)
         self.event_queue = EventQueue()
@@ -66,6 +67,8 @@ class BacktestingEngine:
             slippage_percent=decimal_slippage_percent
         )
 
+        self.is_stepping_mode = is_stepping_mode
+
         logging.info("Backtesting Engine initialized.")
         
     def _initialize_config(self, options: BacktestingOptions):
@@ -95,10 +98,14 @@ class BacktestingEngine:
 
         self.config.log()
 
+    # Full Run
     def run(self) -> Optional[BacktestResults]:
         """
         Runs the main event loop of the backtesting engine
         """
+        if self.is_stepping_mode:
+            raise RuntimeError("Engine is in stepping mode, you need to call step_forward() instead.")
+        
         logging.info(f"Starting Backtest for {self.config.symbols} from {self.config.start_date} to {self.config.end_date}")
 
         while self.data_handler.continue_backtest() or not self.event_queue.empty():
@@ -111,35 +118,61 @@ class BacktestingEngine:
                 self._process_next_event()
 
         # -- Post-Backtest Analysis ---
-        daily_values = self.portfolio_manager.get_daily_values()
-        benchmark_daily_values = self.portfolio_manager.get_benchmark_daily_values()
-        trade_log = self.portfolio_manager.get_trade_log()
-        final_portfolio_summary = self.portfolio_manager.get_summary()
+        return self._finalize_backtest_results()
 
-        if not daily_values:
-            logging.error("No daily values recorded, skipping Summary.")
-            raise Exception("Failed: No daily values.")
+    # Stepping
+    def step_forward(self) -> bool:
+        """
+        Processes one time step (one market event and all subsequent events)
+        Returns True if a market event was processed.
+        """
+        if not self.is_stepping_mode:
+            raise RuntimeError("Engine is not in stepping mode, you need to call run() instead.")
+        
+        market_event_available = False
+        if self.data_handler.continue_backtest():
+            self.data_handler.stream_next_market_event()
+            market_event_available = True
 
-        performance_metrics = calculate_performance_metrics(
-            daily_values=daily_values,
-            trade_log=trade_log,
-            benchmark_daily_values=benchmark_daily_values
+        while not self.event_queue.empty():
+            self._process_next_event()
+
+        return market_event_available
+
+
+    def reset(self):
+        """
+        Resets the engine's internal state for a new sequence of step-by-step execution.
+        This should be called when starting a new backtest simulation in stepping mode.
+        Assumes the engine was initially created with `enable_stepping_mode=True`.
+        """
+        if not self.is_stepping_mode:
+            raise RuntimeError("Engine was not initialized in stepping mode. Cannot call `reset_for_stepping_mode()`.")
+
+        logging.info(f"Resetting Engine for new RL Episode for {self.config.symbols}")
+        
+        self.event_queue = EventQueue() 
+        
+        decimal_transaction_cost = Decimal(str(self.config.transaction_cost_percent))
+        decimal_slippage_percent = Decimal(str(self.config.slippage_percent))
+        self.portfolio_manager = PortfolioManager(
+            event_queue=self.event_queue,
+            symbols=self.config.symbols,
+            initial_cash=self.config.initial_cash,
+            transaction_cost_percent=decimal_transaction_cost,
+            slippage_percent=decimal_slippage_percent,
+            position_sizing_method=self.portfolio_manager.position_sizing_method # Preserve existing method
         )
-
-        results = BacktestResults(
-            performance_metrics=performance_metrics,
-            daily_values=daily_values,
-            benchmark_daily_values=benchmark_daily_values,
-            trade_log=trade_log,
-            final_portfolio_summary=final_portfolio_summary,
-            start_date=self.config.start_date,
-            end_date=self.config.end_date,
-            initial_cash=self.config.initial_cash
+        
+        self.execution_handler = SimulatedExecutionHandler(
+            event_queue=self.event_queue,
+            transaction_cost_percent=decimal_transaction_cost,
+            slippage_percent=decimal_slippage_percent
         )
-
-        logging.info("--- Backtest Finished ---")
-        return results
-
+        
+        for strategy_instance in self.strategies:
+            strategy_instance.set_event_queue(self.event_queue)
+            
     def _process_next_event(self):
         event = self.event_queue.get()
 
@@ -169,3 +202,36 @@ class BacktestingEngine:
 
         else:
             logging.warning(f"Unknown event type received: {event.type}")
+
+    def _finalize_backtest_results(self) -> Optional[BacktestResults]:
+        """
+        Helper method to collect and return backtest results.
+        """
+        daily_values = self.portfolio_manager.get_daily_values()
+        benchmark_daily_values = self.portfolio_manager.get_benchmark_daily_values()
+        trade_log = self.portfolio_manager.get_trade_log()
+        final_portfolio_summary = self.portfolio_manager.get_summary()
+
+        if not daily_values:
+            logging.error("No daily values recorded, skipping Summary.")
+            return None
+
+        performance_metrics = calculate_performance_metrics(
+            daily_values=daily_values,
+            trade_log=trade_log,
+            benchmark_daily_values=benchmark_daily_values
+        )
+
+        results = BacktestResults(
+            performance_metrics=performance_metrics,
+            daily_values=daily_values,
+            benchmark_daily_values=benchmark_daily_values,
+            trade_log=trade_log,
+            final_portfolio_summary=final_portfolio_summary,
+            start_date=self.config.start_date,
+            end_date=self.config.end_date,
+            initial_cash=self.config.initial_cash
+        )
+
+        logging.info("--- Backtest Finished ---")
+        return results
