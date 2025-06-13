@@ -28,6 +28,7 @@ class PortfolioManager:
         slippage_percent: Decimal = Decimal("0.0005"),
         position_sizing_method: Optional[BasePositionSizing] = None,
     ):
+        self.initial_cash = initial_cash
         self.event_queue = event_queue
         self.portfolio_account = Portfolio(initial_cash, transaction_cost_percent)
         self._latest_market_prices: Dict[str, Decimal] = {}
@@ -235,7 +236,19 @@ class PortfolioManager:
             "holdings": self.portfolio_account.holdings,
             "total_value": self.portfolio_account.get_total_value(self._latest_market_prices)
         }
-    
+
+    def reset(self):
+        """
+        Resets the portfolio manager's state for a new backtest run.
+        This clears all holdings, cash, and market price memory.
+        """
+        logging.info("Resetting Portfolio Manager...")
+        self.portfolio_account = Portfolio(Decimal(str(self.initial_cash)))
+        self._latest_market_prices = {}
+        self._daily_metrics = {}
+        logging.info("Portfolio Manager reset complete.")
+
+
     def _calculate_and_record_strategy_value(self):
         """
         Calculates the strategy's total portfolio value for the current day

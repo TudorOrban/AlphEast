@@ -36,8 +36,7 @@ class BaseStrategy(ABC):
     def _put_signal_event(
         self,
         timestamp: datetime,
-        direction: Signal,
-        strength: float = 1.0
+        direction: Signal
     ):
         if self.event_queue is None:
             raise RuntimeError("Event queue not set for strategy. Call set_event_queue() first.")
@@ -45,8 +44,7 @@ class BaseStrategy(ABC):
         signal_event = SignalEvent(
             symbol=self.symbol,
             timestamp=timestamp,
-            direction=direction,
-            strength=strength
+            direction=direction
         )
         self.event_queue.put(signal_event)
         logging.debug(f"Strategy for {self.symbol} issued {direction} signal on {timestamp.date()}.")
