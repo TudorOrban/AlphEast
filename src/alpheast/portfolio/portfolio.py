@@ -83,7 +83,8 @@ class Portfolio:
 
         if self.holdings.get(symbol, Decimal("0")) < quantity:
             logging.error(f"Attempted to sell {quantity} of {symbol} on {timestamp.date()} but insufficient holdings! Holding: {self.holdings.get(symbol, Decimal('0'))}")
-            raise ValueError(f"Insufficient holdings of {symbol} to perform sell operation.")
+            # raise ValueError(f"Insufficient holdings of {symbol} to perform sell operation.")
+            return
 
         trade_revenue_raw = price * quantity
         total_revenue = trade_revenue_raw - commission

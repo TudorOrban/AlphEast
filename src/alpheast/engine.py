@@ -150,15 +150,15 @@ class BacktestingEngine:
         if not self.is_stepping_mode:
             raise RuntimeError("Engine was not initialized in stepping mode. Cannot call `reset_for_stepping_mode()`.")
 
-        logging.info(f"Resetting Engine for new RL Episode for {self.config.symbols}")
         while not self.event_queue.empty():
             try:
                 self.event_queue.get_nowait()
             except queue.Empty:
                 break 
             
-        # self.data_handler.reset()
+        self.data_handler.reset()
         self.portfolio_manager.reset() 
+        self.execution_handler.reset()
         
         self.strategies_initialized = False
         self.current_simulation_date = None

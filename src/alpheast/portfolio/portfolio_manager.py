@@ -242,10 +242,14 @@ class PortfolioManager:
         Resets the portfolio manager's state for a new backtest run.
         This clears all holdings, cash, and market price memory.
         """
-        logging.info("Resetting Portfolio Manager...")
         self.portfolio_account = Portfolio(Decimal(str(self.initial_cash)))
         self._latest_market_prices = {}
-        self._daily_metrics = {}
+        self._daily_values = []
+        self._trade_log = []
+        self._pending_orders = {}
+
+        self.benchmark_calculator = BenchmarkCalculator(self.symbols, self.portfolio_account.transaction_cost_percent, self.slippage_percent)
+
         logging.info("Portfolio Manager reset complete.")
 
 
