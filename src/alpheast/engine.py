@@ -1,6 +1,7 @@
 from decimal import Decimal
 import logging
 import os
+import queue
 from typing import List, Optional
 
 from alpheast.config.config_loader import ConfigLoader
@@ -139,7 +140,6 @@ class BacktestingEngine:
 
         return market_event_available
 
-
     def reset(self):
         """
         Resets the engine's internal state for a new sequence of step-by-step execution.
@@ -149,30 +149,21 @@ class BacktestingEngine:
         if not self.is_stepping_mode:
             raise RuntimeError("Engine was not initialized in stepping mode. Cannot call `reset_for_stepping_mode()`.")
 
-        logging.info(f"Resetting Engine for new RL Episode for {self.config.symbols}")
-        
-        self.event_queue = EventQueue() 
-        
-        decimal_transaction_cost = Decimal(str(self.config.transaction_cost_percent))
-        decimal_slippage_percent = Decimal(str(self.config.slippage_percent))
-        self.portfolio_manager = PortfolioManager(
-            event_queue=self.event_queue,
-            symbols=self.config.symbols,
-            initial_cash=self.config.initial_cash,
-            transaction_cost_percent=decimal_transaction_cost,
-            slippage_percent=decimal_slippage_percent,
-            position_sizing_method=self.portfolio_manager.position_sizing_method # Preserve existing method
-        )
-        
-        self.execution_handler = SimulatedExecutionHandler(
-            event_queue=self.event_queue,
-            transaction_cost_percent=decimal_transaction_cost,
-            slippage_percent=decimal_slippage_percent
-        )
-        
-        for strategy_instance in self.strategies:
-            strategy_instance.set_event_queue(self.event_queue)
+        while not self.event_queue.empty():
+            try:
+                self.event_queue.get_nowait()
+            except queue.Empty:
+                break 
             
+        self.data_handler.reset()
+        self.portfolio_manager.reset() 
+        self.execution_handler.reset()
+        
+        self.strategies_initialized = False
+        self.current_simulation_date = None
+        logging.info("Backtesting Engine reset complete.")
+
+        
     def _process_next_event(self):
         event = self.event_queue.get()
 

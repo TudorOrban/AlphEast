@@ -104,6 +104,15 @@ class DataHandler:
     def continue_backtest(self) -> bool:
         return self._has_more_data
 
+    def reset(self):
+        """
+        Resets the DataHandler to its initial state, ready to stream data from the beginning.
+        """
+        self._preprocess_data() 
+        self._last_processed_date = None
+        self._last_processed_timestamp = None
+        logging.info(f"DataHandler RESET complete. Ready to stream from {self.start_date}.")
+
     def _preprocess_data(self):
         """
         Loads data for all specified symbols and interval, sorts it,
