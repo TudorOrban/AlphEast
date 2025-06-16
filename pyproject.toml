@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alpheast"
-version = "0.1.2"
+version = "0.1.3"
 authors = [
     { name="Tudor Andrei Orban", email="tudoraorban@protonmail.com" },
 ]
@@ -35,5 +35,6 @@ dependencies = [
 ]
 
 [project.urls]
+Documentation = "https://alpheast.readthedocs.io/en/latest/"
 Homepage = "https://github.com/TudorOrban/AlphEast"
 Issues = "https://github.com/TudorOrban/AlphEast/issues"

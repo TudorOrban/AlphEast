@@ -140,7 +140,6 @@ class BacktestingEngine:
 
         return market_event_available
 
-
     def reset(self):
         """
         Resets the engine's internal state for a new sequence of step-by-step execution.

@@ -28,22 +28,24 @@ class PortfolioManager:
         slippage_percent: Decimal = Decimal("0.0005"),
         position_sizing_method: Optional[BasePositionSizing] = None,
     ):
-        self.initial_cash = initial_cash
         self.event_queue = event_queue
+        self.initial_cash = initial_cash
+        self.symbols = symbols
+
         self.portfolio_account = Portfolio(initial_cash, transaction_cost_percent)
         self._latest_market_prices: Dict[str, Decimal] = {}
         self._current_date: Optional[datetime.date] = None
         
+        self._pending_orders: Dict[str, OrderEvent] = {}
+        self._committed_sell_quantities: Dict[str, Decimal] = {}
+
         self._daily_values: List[Dict[str, Any]] = []
         self._trade_log: List[Dict[str, Any]] = []
         
+        self.slippage_percent = slippage_percent
         self.position_sizing_method = position_sizing_method or FixedAllocationSizing(0.05)
         
-        self.symbols = symbols
         self.benchmark_calculator = BenchmarkCalculator(symbols, transaction_cost_percent, slippage_percent)
-        self._pending_orders: Dict[str, OrderEvent] = {}
-
-        self.slippage_percent = slippage_percent
 
         logging.info(f"PortfolioManager initialized. Initial cash: ${self.portfolio_account.cash:.2f}")
 
@@ -77,82 +79,10 @@ class PortfolioManager:
                 
         cash_for_new_order_consideration = max(Decimal("0"), cash_for_new_order_consideration)
 
-
         if event.direction == Signal.BUY:
             self._buy_on_signal_event(event, current_holding, current_price, cash_for_new_order_consideration)
         elif event.direction == Signal.SELL:
             self._sell_on_signal_event(event, current_holding, current_price)
-
-    def _buy_on_signal_event(
-        self, 
-        event: SignalEvent,
-        current_holding: Decimal,
-        current_price: Decimal,
-        cash_available_for_new_order: Decimal
-    ):
-        if current_holding == Decimal("0"):
-            calculated_quantity = self.position_sizing_method.calculate_quantity(
-                symbol=event.symbol,
-                direction=event.direction,
-                current_price=current_price,
-                portfolio_cash=cash_available_for_new_order,
-                portfolio_holdings=self.portfolio_account.holdings,
-                portfolio_current_value=self.portfolio_account.get_total_value(self._latest_market_prices), # Pass current total value
-                latest_market_prices=self._latest_market_prices 
-            )
-
-            if calculated_quantity <= Decimal("0"):
-                logging.warning(f"Calculated quantity for {event.symbol} is {calculated_quantity}. Skipping BUY signal on {event.timestamp.date()}.")
-                return
-
-            estimated_fill_price_with_slippage = current_price * (Decimal("1") + self.slippage_percent)
-            estimated_fill_price_with_slippage = max(Decimal("0.01"), estimated_fill_price_with_slippage) 
-            estimated_total_cost = (calculated_quantity * estimated_fill_price_with_slippage) * \
-                                   (Decimal("1") + self.portfolio_account.transaction_cost_percent)
-            
-            if cash_available_for_new_order >= estimated_total_cost:
-                order_event = OrderEvent(
-                    order_id=str(uuid.uuid4()),
-                    symbol=event.symbol,
-                    timestamp=event.timestamp,
-                    direction=Signal.BUY,
-                    quantity=calculated_quantity,
-                    order_type=OrderType.MARKET,
-                    price=current_price
-                )
-                self.event_queue.put(order_event)
-                self._pending_orders[order_event.order_id] = order_event
-                logging.info(f"PortfolioManager placed BUY order for {calculated_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}")
-            else:
-                logging.warning(f"Not enough cash to BUY {calculated_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}. Current cash: ${self.portfolio_account.cash:.2f}")
-        else:
-            logging.debug(f"Already holding {event.symbol}. Skipping BUY signal on {event.timestamp.date()}.")
-
-    def _sell_on_signal_event(
-        self,
-        event: SignalEvent,
-        current_holding: Decimal,
-        current_price: Decimal
-    ):
-        if current_holding <= Decimal("0"):
-            logging.debug(f"Not holding {event.symbol}. Skipping SELL signal on {event.timestamp.date()}.")
-            return
-        
-        # Sell all current holding
-        quantity_to_sell = current_holding
-
-        order_event = OrderEvent(
-            order_id=str(uuid.uuid4()),
-            symbol=event.symbol,
-            timestamp=event.timestamp,
-            direction=Signal.SELL,
-            quantity=quantity_to_sell,
-            order_type=OrderType.MARKET,
-            price=current_price
-        )
-        self.event_queue.put(order_event)
-        self._pending_orders[order_event.order_id] = order_event
-        logging.info(f"PortfolioManager placed SELL order for {quantity_to_sell} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}")
 
     def on_fill_event(self, event: FillEvent):
         """
@@ -160,7 +90,14 @@ class PortfolioManager:
         cash and holdings of the portfolio.
         """
         if event.order_id in self._pending_orders:
-            del self._pending_orders[event.order_id]
+            order_details = self._pending_orders.pop(event.order_id) 
+            
+            if order_details.direction == Signal.SELL:
+                current_committed = self._committed_sell_quantities.get(event.symbol, Decimal("0"))
+                self._committed_sell_quantities[event.symbol] = max(Decimal("0"), current_committed - event.quantity)
+
+                if self._committed_sell_quantities[event.symbol] <= Decimal("0.00000001"):
+                    del self._committed_sell_quantities[event.symbol]
         else:
             logging.warning(f"Received FillEvent for unknown or already processed order ID: {event.order_id}. This might indicate a logic error or out-of-order event processing.")
 
@@ -215,6 +152,97 @@ class PortfolioManager:
             self._latest_market_prices
         )
 
+    def reset(self):
+        """
+        Resets the portfolio manager's state for a new backtest run.
+        This clears all holdings, cash, and market price memory.
+        """
+        self.portfolio_account = Portfolio(Decimal(str(self.initial_cash)))
+        self._latest_market_prices = {}
+        self._daily_values = []
+        self._trade_log = []
+        self._pending_orders = {}
+        self._committed_sell_quantities = {}
+
+        self.benchmark_calculator = BenchmarkCalculator(self.symbols, self.portfolio_account.transaction_cost_percent, self.slippage_percent)
+
+        logging.info("Portfolio Manager reset complete.")
+
+    def _buy_on_signal_event(
+        self, 
+        event: SignalEvent,
+        current_holding: Decimal,
+        current_price: Decimal,
+        cash_available_for_new_order: Decimal
+    ):
+        if current_holding == Decimal("0"):
+            calculated_quantity = self.position_sizing_method.calculate_quantity(
+                symbol=event.symbol,
+                direction=event.direction,
+                current_price=current_price,
+                portfolio_cash=cash_available_for_new_order,
+                portfolio_holdings=self.portfolio_account.holdings,
+                portfolio_current_value=self.portfolio_account.get_total_value(self._latest_market_prices), # Pass current total value
+                latest_market_prices=self._latest_market_prices 
+            )
+
+            if calculated_quantity <= Decimal("0"):
+                logging.warning(f"Calculated quantity for {event.symbol} is {calculated_quantity}. Skipping BUY signal on {event.timestamp.date()}.")
+                return
+
+            estimated_fill_price_with_slippage = current_price * (Decimal("1") + self.slippage_percent)
+            estimated_fill_price_with_slippage = max(Decimal("0.01"), estimated_fill_price_with_slippage) 
+            estimated_total_cost = (calculated_quantity * estimated_fill_price_with_slippage) * \
+                                   (Decimal("1") + self.portfolio_account.transaction_cost_percent)
+            
+            if cash_available_for_new_order >= estimated_total_cost:
+                order_event = OrderEvent(
+                    order_id=str(uuid.uuid4()),
+                    symbol=event.symbol,
+                    timestamp=event.timestamp,
+                    direction=Signal.BUY,
+                    quantity=calculated_quantity,
+                    order_type=OrderType.MARKET,
+                    price=current_price
+                )
+                self.event_queue.put(order_event)
+                self._pending_orders[order_event.order_id] = order_event
+                logging.info(f"PortfolioManager placed BUY order for {calculated_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}")
+            else:
+                logging.warning(f"Not enough cash to BUY {calculated_quantity} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}. Current cash: ${self.portfolio_account.cash:.2f}")
+        else:
+            logging.debug(f"Already holding {event.symbol}. Skipping BUY signal on {event.timestamp.date()}.")
+
+    def _sell_on_signal_event(
+        self,
+        event: SignalEvent,
+        current_holding: Decimal,
+        current_price: Decimal
+    ):
+        available_holding = current_holding - self._committed_sell_quantities.get(event.symbol, Decimal("0"))
+
+        if available_holding <= Decimal("0"):
+            logging.debug(f"Not holding {event.symbol}. Skipping SELL signal on {event.timestamp.date()}.")
+            return
+        
+        # Sell all current (uncommitted) holding
+        quantity_to_sell = available_holding
+
+        order_event = OrderEvent(
+            order_id=str(uuid.uuid4()),
+            symbol=event.symbol,
+            timestamp=event.timestamp,
+            direction=Signal.SELL,
+            quantity=quantity_to_sell,
+            order_type=OrderType.MARKET,
+            price=current_price
+        )
+        self.event_queue.put(order_event)
+        self._pending_orders[order_event.order_id] = order_event
+        self._committed_sell_quantities[event.symbol] = self._committed_sell_quantities.get(event.symbol, Decimal("0")) + quantity_to_sell
+
+        logging.info(f"PortfolioManager placed SELL order for {quantity_to_sell} of {event.symbol} at {current_price:.2f} on {event.timestamp.date()}")
+
     # --- Methods to retrieve final performance data for analysis ---
     def get_daily_values(self) -> List[Dict[str, Any]]:
         return self._daily_values
@@ -236,22 +264,6 @@ class PortfolioManager:
             "holdings": self.portfolio_account.holdings,
             "total_value": self.portfolio_account.get_total_value(self._latest_market_prices)
         }
-
-    def reset(self):
-        """
-        Resets the portfolio manager's state for a new backtest run.
-        This clears all holdings, cash, and market price memory.
-        """
-        self.portfolio_account = Portfolio(Decimal(str(self.initial_cash)))
-        self._latest_market_prices = {}
-        self._daily_values = []
-        self._trade_log = []
-        self._pending_orders = {}
-
-        self.benchmark_calculator = BenchmarkCalculator(self.symbols, self.portfolio_account.transaction_cost_percent, self.slippage_percent)
-
-        logging.info("Portfolio Manager reset complete.")
-
 
     def _calculate_and_record_strategy_value(self):
         """
